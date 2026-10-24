@@ -1,5 +1,6 @@
 import { profile, type DialectId, type Strictness } from "./dialects";
 import { defaultPolicies, type RuntimePolicies } from "./policies";
+import { tr } from "./i18n";
 
 export type ExamGuideVersion = "2026" | "2027–2029";
 export interface ExamEnvironment {
@@ -113,14 +114,20 @@ export function startExam(
     !dialects.includes(options.dialect) ||
     !guides.includes(options.guideVersion)
   )
-    throw new Error("无效的考试配置 / Invalid exam configuration");
+    throw new Error(tr("Invalid exam configuration", "无效的考试配置"));
   if (
     !Number.isInteger(options.minutes) ||
     options.minutes < 1 ||
     options.minutes > 300
   )
-    throw new Error("考试时长必须是 1–300 分钟的整数");
-  if (!Number.isFinite(now)) throw new Error("无效的系统时间");
+    throw new Error(
+      tr(
+        "Exam duration must be a whole number from 1–300 minutes",
+        "考试时长必须是 1–300 分钟的整数",
+      ),
+    );
+  if (!Number.isFinite(now))
+    throw new Error(tr("Invalid system time", "无效的系统时间"));
   const config: ExamEnvironment = {
     ...structuredClone(normalConfig),
     dialect: options.dialect,
@@ -190,7 +197,10 @@ export function exportExamAnswer(session: ExamSession) {
       rules: examRules(session.config).label,
       config: session.config,
       answer: session.answer,
-      notice: "本地模拟练习记录，可由使用者修改；不是官方成绩或防作弊证明。",
+      notice: tr(
+        "Local practice record containing the saved answer and session settings.",
+        "本地模拟练习记录，包含保存的答卷与本次设置。",
+      ),
     },
     null,
     2,

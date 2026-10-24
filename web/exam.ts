@@ -14,6 +14,12 @@ import {
   type ExamStartOptions,
 } from "../core/exam";
 import { createSettings } from "./storage";
+import { bindStaticLocale, getLocale, onLocaleChange, tr } from "./i18n";
+import {
+  examBuiltinDescription,
+  examLabels,
+  examPolicyText,
+} from "./exam-copy";
 import "./exam.css";
 
 export type {
@@ -44,6 +50,8 @@ export function createExamController(host: ExamHost) {
   let archived = parseExamSession(settings.getItem(EXAM_ARCHIVE_KEY));
   let applying = false;
   let saved = true;
+  let savePending = false;
+  let message: [english: string, chinese: string] = ["", ""];
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
   const element = document.createElement("section");
   element.id = "exam-panel";
@@ -68,6 +76,7 @@ export function createExamController(host: ExamHost) {
     <div id="exam-archive" hidden><span id="exam-archive-status"></span> <button id="exam-archive-download">下载上次答卷</button> <button id="exam-archive-record">下载上次记录</button></div>
     <details id="exam-insert"><summary>Insert 函数与规则参考</summary><div id="exam-insert-content"></div></details>
   </details>`;
+  const unbindStaticLocale = bindStaticLocale(element, examLabels);
   const get = <T extends HTMLElement = HTMLElement>(id: string) =>
     element.querySelector<T>(`#${id}`)!;
   const escape = (value: unknown) =>
@@ -84,11 +93,22 @@ export function createExamController(host: ExamHost) {
     );
   const statusLabel = (state: ExamSession) =>
     ({
-      running: "考试进行中",
-      submitted: "答卷已提交 · 只读",
-      expired: "时间已到 · 答卷已锁定",
-      ended: "已结束",
+      running: tr("Exam in progress", "考试进行中"),
+      submitted: tr("Answer submitted · Read-only", "答卷已提交 · 只读"),
+      expired: tr("Time is up · Answer locked", "时间已到 · 答卷已锁定"),
+      ended: tr("Ended", "已结束"),
     })[state.status];
+  function setMessage(english: string, chinese: string) {
+    message = [english, chinese];
+    get("exam-message").textContent = tr(...message);
+  }
+  function renderSaveState() {
+    get("exam-save-state").textContent = savePending
+      ? tr("Saving answer…", "答卷保存中…")
+      : saved && settings.persistent !== false
+        ? tr("Answer saved on this device", "答卷已保存本机")
+        : tr("Download your answer to save a copy", "答卷未持久保存，请下载");
+  }
   function write() {
     if (saveTimer) {
       clearTimeout(saveTimer);
@@ -98,10 +118,8 @@ export function createExamController(host: ExamHost) {
     session.savedAt = now();
     saved =
       settings.setItem(EXAM_SESSION_KEY, JSON.stringify(session)) !== false;
-    get("exam-save-state").textContent =
-      saved && settings.persistent !== false
-        ? "答卷已保存本机"
-        : "答卷未持久保存，请下载";
+    savePending = false;
+    renderSaveState();
   }
   function insertReference() {
     const config = session?.config ?? {
@@ -114,19 +132,28 @@ export function createExamController(host: ExamHost) {
     const rules = examRules(config);
     const operators =
       config.dialect === "0478" || config.dialect === "2210"
-        ? "赋值 ←；比较 =、<>、<、<=、>、>=；逻辑 NOT、AND、OR；WHILE … DO；字符串位置从 1 开始。"
-        : "赋值 ←；比较 =、<>、<、<=、>、>=；逻辑 NOT、AND、OR；整数运算 DIV、MOD；字符串位置从 1 开始。";
+        ? tr(
+            "Assignment ←; comparisons =, <>, <, <=, >, >=; logic NOT, AND, OR; WHILE … DO; string positions start at 1.",
+            "赋值 ←；比较 =、<>、<、<=、>、>=；逻辑 NOT、AND、OR；WHILE … DO；字符串位置从 1 开始。",
+          )
+        : tr(
+            "Assignment ←; comparisons =, <>, <, <=, >, >=; logic NOT, AND, OR; integer operators DIV, MOD; string positions start at 1.",
+            "赋值 ←；比较 =、<>、<、<=、>、>=；逻辑 NOT、AND、OR；整数运算 DIV、MOD；字符串位置从 1 开始。",
+          );
+    const policiesOpen = get("exam-insert-content").querySelector(
+      "details",
+    )?.open;
     get("exam-insert-content").innerHTML =
-      `<p>本项目整理的函数与规则速查，并非官方原卷 Insert 的复本；展示本项目当前实现，本次未重新复核官方原文。</p><h3>${escape(rules.label)}</h3><p>${escape(operators)}</p><div class="exam-signatures">${rules.profile.builtins
+      `<p>${escape(tr("A quick reference to the functions and rules implemented in Pseudocode Ultra for this session.", "本项目整理的函数与规则速查，并非官方原卷 Insert 的复本；展示本项目当前实现，本次未重新复核官方原文。"))}</p><h3>${escape(rules.label)}</h3><p>${escape(operators)}</p><div class="exam-signatures">${rules.profile.builtins
         .map((name) => {
           const sig = builtinSignature(name, rules.profile);
           return sig
-            ? `<p><code>${escape(signatureText(sig))}</code><small>${escape(sig.description)}</small></p>`
+            ? `<p><code>${escape(signatureText(sig))}</code><small>${escape(examBuiltinDescription(name, sig.description))}</small></p>`
             : "";
         })
         .join(
           "",
-        )}</div><details><summary>本次锁定的运行策略</summary><pre>${escape(JSON.stringify({ logicalPrecedence: config.logicalPrecedence, ...rules.policies, maxSteps: config.maxSteps, seed: config.seed }, null, 2))}</pre><p>以上包含项目运行策略，不全是官方规范。9618 Guide 选项不适用于 0478/2210，后者固定使用 2026–2028 v6。</p></details>`;
+        )}</div><details${policiesOpen ? " open" : ""}><summary>${escape(tr("Locked runtime policies", "本次锁定的运行策略"))}</summary><pre>${escape(examPolicyText(config))}</pre><p>${escape(tr("0478 and 2210 use 2026–2028 v6. The Guide version selection applies to 9618.", "0478 与 2210 固定使用 2026–2028 v6；Guide 版本选项用于 9618。"))}</p></details>`;
   }
   function updateSetupGuide() {
     const basic = ["0478", "2210"].includes(
@@ -141,19 +168,23 @@ export function createExamController(host: ExamHost) {
     get("exam-archive").hidden = !!session || !archived;
     get("exam-summary").textContent = session
       ? `· ${statusLabel(session)} · ${examClock(session.deadline, now())}`
-      : "· 可配置倒计时与答卷";
+      : tr("· Configure a timed answer session", "· 可配置倒计时与答卷");
     if (session) {
       get("exam-state").textContent = statusLabel(session);
       get("exam-rules").textContent = examRules(session.config).label;
       get("exam-countdown").textContent = examClock(session.deadline, now());
-      get("exam-deadline").textContent =
-        `开始：${new Date(session.startedAt).toLocaleString()}；截止：${new Date(session.deadline).toLocaleString()}。关闭页面、切换标签或休眠不会暂停倒计时。`;
+      get("exam-deadline").textContent = tr(
+        `Started: ${new Date(session.startedAt).toLocaleString(getLocale())}. Deadline: ${new Date(session.deadline).toLocaleString(getLocale())}. The countdown continues while the page is closed, in the background or asleep.`,
+        `开始：${new Date(session.startedAt).toLocaleString(getLocale())}；截止：${new Date(session.deadline).toLocaleString(getLocale())}。关闭页面、切换标签或休眠不会暂停倒计时。`,
+      );
       get<HTMLButtonElement>("exam-submit").disabled =
         session.status !== "running";
     }
     if (archived)
       get("exam-archive-status").textContent =
-        `上次答卷 · ${statusLabel(archived)} · ${new Date(archived.startedAt).toLocaleString()}`;
+        `${tr("Previous answer", "上次答卷")} · ${statusLabel(archived)} · ${new Date(archived.startedAt).toLocaleString(getLocale())}`;
+    get("exam-message").textContent = tr(...message);
+    renderSaveState();
     insertReference();
   }
   function applySession() {
@@ -172,11 +203,14 @@ export function createExamController(host: ExamHost) {
     render();
   }
   function start(options: ExamStartOptions) {
-    if (session) throw new Error("请先结束当前考试");
+    if (session)
+      throw new Error(tr("Finish the current exam first", "请先结束当前考试"));
     session = startExam(host.getSource(), host.getConfig(), options, now());
     write();
-    get("exam-message").textContent =
-      "已开始考试。规则锁定，Insert 参考可在下方查看。";
+    setMessage(
+      "Exam started. The rules are locked; open Insert below for reference.",
+      "已开始考试。规则锁定，Insert 参考可在下方查看。",
+    );
     applySession();
     return session;
   }
@@ -189,8 +223,10 @@ export function createExamController(host: ExamHost) {
       host.onStateChange(session);
       write();
       render();
-      get("exam-message").textContent =
-        "考试时间已到。答卷已锁定，可下载或结束并恢复普通草稿。";
+      setMessage(
+        "Time is up. Your answer is locked. Download it or finish to restore your ordinary draft.",
+        "考试时间已到。答卷已锁定，可下载或结束并恢复普通草稿。",
+      );
     }
     get("exam-countdown").textContent = examClock(session.deadline, now());
     // The summary remains visible when the panel is folded; it is intentionally not aria-live.
@@ -205,7 +241,8 @@ export function createExamController(host: ExamHost) {
       return;
     }
     session.answer = host.getSource();
-    get("exam-save-state").textContent = "答卷保存中…";
+    savePending = true;
+    renderSaveState();
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(write, 350);
   }
@@ -219,8 +256,10 @@ export function createExamController(host: ExamHost) {
     host.onStateChange(session);
     write();
     render();
-    get("exam-message").textContent =
-      "答卷已提交并锁定。此处保存本地答卷，不进行官方评分。";
+    setMessage(
+      "Answer submitted and locked. You can download the saved answer and session record.",
+      "答卷已提交并锁定。可下载已保存的答卷与本次记录。",
+    );
     return session;
   }
   function finish() {
@@ -256,10 +295,16 @@ export function createExamController(host: ExamHost) {
     get<HTMLSelectElement>("exam-guide").value = normalConfig.guideVersion;
     updateSetupGuide();
     render();
-    get("exam-message").textContent =
-      archiveSaved && settings.persistent !== false
-        ? "已恢复普通草稿与设置。上次答卷保留在本机，可下载备份。"
-        : "已恢复普通草稿与设置。上次答卷未持久保存，请立即下载备份。";
+    if (archiveSaved && settings.persistent !== false)
+      setMessage(
+        "Your ordinary draft and settings are restored. The previous answer is saved on this device and available to download.",
+        "已恢复普通草稿与设置。上次答卷保留在本机，可下载备份。",
+      );
+    else
+      setMessage(
+        "Your ordinary draft and settings are restored. Download the previous answer now to save a copy.",
+        "已恢复普通草稿与设置。上次答卷未持久保存，请立即下载备份。",
+      );
   }
   function download(state: ExamSession | null, record = false) {
     if (!state) return;
@@ -295,14 +340,30 @@ export function createExamController(host: ExamHost) {
           : "",
       });
     } catch (error) {
-      get("exam-message").textContent = String((error as Error).message);
+      const text = String((error as Error).message);
+      const known: [string, string][] = [
+        ["Invalid exam configuration", "无效的考试配置"],
+        [
+          "Exam duration must be a whole number from 1–300 minutes",
+          "考试时长必须是 1–300 分钟的整数",
+        ],
+        ["Invalid system time", "无效的系统时间"],
+        ["Finish the current exam first", "请先结束当前考试"],
+      ];
+      const pair = known.find((pair) => pair.includes(text)) ?? [text, text];
+      setMessage(pair[0], pair[1]);
     }
   };
   get("exam-submit").onclick = () => submit();
   get("exam-finish").onclick = () => {
     if (
       session?.status === "running" &&
-      !confirm("结束本次考试并恢复普通草稿？当前答卷会保留为上次答卷。")
+      !confirm(
+        tr(
+          "Finish this exam and restore your ordinary draft? This answer will be retained as your previous answer.",
+          "结束本次考试并恢复普通草稿？当前答卷会保留为上次答卷。",
+        ),
+      )
     )
       return;
     finish();
@@ -321,6 +382,7 @@ export function createExamController(host: ExamHost) {
     write();
     applySession();
   } else render();
+  const unbindLocaleChange = onLocaleChange(render);
   const timer = setInterval(tick, 250);
   const flush = () => {
     tick();
@@ -354,6 +416,8 @@ export function createExamController(host: ExamHost) {
       if (saveTimer) clearTimeout(saveTimer);
       window.removeEventListener("beforeunload", flush);
       document.removeEventListener("visibilitychange", visibility);
+      unbindStaticLocale();
+      unbindLocaleChange();
     },
   };
 }

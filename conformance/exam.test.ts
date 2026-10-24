@@ -177,7 +177,7 @@ test("downloaded exam records include settings and answer but exclude the ordina
   assert.ok(!("normalSource" in value));
   assert.ok(!("normalConfig" in value));
   assert.ok(!json.includes("private ordinary draft"));
-  assert.match(value.notice, /本地模拟练习/);
+  assert.match(value.notice, /Local practice record/);
 });
 test("exam storage keys are separate from ordinary source and from the retained last answer", () => {
   assert.notEqual(EXAM_SESSION_KEY, "source");

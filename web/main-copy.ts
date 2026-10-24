@@ -1,0 +1,152 @@
+import { getLocale, localizeMessage } from "./i18n";
+
+export const mainCopy: Record<string, string> = {
+  编辑器: "Editor",
+  示例: "Examples",
+  参考: "Reference",
+  "本地执行 · Local-first": "Local execution · Local-first",
+  原创练习: "Practice",
+  练习: "Practice",
+  考试练习: "Exam practice",
+  考试: "Exam",
+  "本机存储不可用或保存失败，部分内容可能仅在本次会话保留。请下载备份。 / Local storage failed; download a backup.":
+    "Local storage is unavailable. Download your work to keep a backup.",
+  方言: "Dialect",
+  "▶ 运行": "▶ Run",
+  手动运行: "Run on click",
+  输入后运行: "Run after editing",
+  失焦时运行: "Run on editor blur",
+  "运行方式 / Run mode": "Run mode",
+  "高速执行不生成追踪表，调试请关闭":
+    "Run large programs without trace snapshots",
+  高速: "Fast",
+  "Ⅱ 暂停": "Ⅱ Pause",
+  "↳ 单步": "↳ Step",
+  "↷ 跳过": "↷ Step over",
+  "↑ 跳出": "↑ Step out",
+  "■ 停止": "■ Stop",
+  格式化: "Format",
+  "↓ 保存": "↓ Save",
+  "↑ 打开": "↑ Open",
+  已保存本机: "Saved locally",
+  "未保存 · 请下载": "Unsaved · Download a copy",
+  "考试答卷 · 独立保存": "Exam answer · Saved separately",
+  "示例程序 / Examples": "Example programs",
+  清除断点: "Clear breakpoints",
+  调试工作台: "Debugger",
+  就绪: "Ready",
+  运行中: "Running",
+  已暂停: "Paused",
+  等待输入: "Waiting for input",
+  执行完成: "Completed",
+  执行错误: "Execution error",
+  "Worker 错误": "Worker error",
+  已停止: "Stopped",
+  代码已更改: "Code changed",
+  变量: "Variables",
+  运行或单步执行后查看变量:
+    "Run or step through your code to inspect variables",
+  监视表达式: "Watches",
+  "变量名称，例如 Total": "Expression, e.g. Total",
+  调用栈: "Call stack",
+  尚未进入子程序: "No active subroutine",
+  虚拟文件: "Virtual files",
+  "＋ 新建文件": "+ New file",
+  "↑ 导入文件": "↑ Import files",
+  "↓ 备份全部": "↓ Back up all",
+  代码大纲: "Outline",
+  "Cambridge 规范版本可配置": "Configurable Cambridge language profiles",
+  "依据官方 Guide / Insert / v6 考纲实现。具体来源与模糊语义策略见语言参考。":
+    "Explore the language guide, built-in signatures and runtime policies in Reference.",
+  终端: "Console",
+  诊断: "Diagnostics",
+  追踪表: "Trace table",
+  流程图: "Flowchart",
+  代码转换: "Code export",
+  语言参考: "Reference",
+  "准备好了。点击运行，或点击行号旁设置断点后开始单步执行。":
+    "Click Run, or set a breakpoint beside a line and start stepping.",
+  "输入值后按 Enter": "Enter a value and press Enter",
+  提交: "Submit",
+  "↓ Excel": "↓ Excel",
+  填空练习: "Fill in the blanks",
+  批改本页: "Grade this page",
+  每条语句: "Every statement",
+  仅变量变化: "Variable changes",
+  "模块进入/返回": "Module entry / return",
+  每次循环: "Each loop",
+  "IF/CASE 分支": "IF / CASE branches",
+  从左到右: "Left to right",
+  "列顺序，如 I, Total": "Column order, e.g. I, Total",
+  隐藏重复值: "Hide repeated values",
+  上一页: "Previous",
+  下一页: "Next",
+  下载全部诊断: "Download all diagnostics",
+  "转换语言 / Target language": "Target language",
+  转换: "Convert",
+  "↓ 下载": "↓ Download",
+  "完整类型与虚拟文件语义 · 独立程序，仅依赖目标语言标准库。":
+    "Export standalone Python, Java or VB.NET source with types and virtual files.",
+  "不上传源码 · 在浏览器 Worker 中执行": "Runs locally in browser workers",
+  "指令上限 100,000 · 确定性随机种子":
+    "100,000 instruction limit · Deterministic random seed",
+  文件: "File",
+  "此文件包含随机记录；修改文本会保留所有记录。 / Random records will be preserved.":
+    "Editing this file's text preserves its random-access records.",
+  取消: "Cancel",
+  保存: "Save",
+  语言分析进度: "Language analysis progress",
+  等待分析: "Waiting for analysis",
+  取消分析: "Cancel analysis",
+  重新分析: "Analyze again",
+  "代码已更改，等待分析当前文档":
+    "Code changed · Waiting to analyze the current document",
+  完整诊断已更新: "Diagnostics are up to date",
+  "分析已取消，文档完整保留；点击重新分析恢复":
+    "Analysis cancelled · Your document is intact. Select Analyze again to resume.",
+  分析已暂停: "Analysis paused",
+  考试期间关闭学习辅助: "Learning aids are disabled during an exam",
+  "未发现静态诊断。运行时仍会检查类型、边界和文件状态。":
+    "No static diagnostics. Run your code to check its behavior.",
+  当前作用域没有变量: "No variables in the current scope",
+  "暂无文件 · 运行 WRITEFILE 可创建":
+    "No files yet · Create one or run WRITEFILE",
+  "文件持久化失败，请导出备份。":
+    "Files could not be saved locally. Export a backup.",
+  "删除此文件？": "Delete this file?",
+  "主程序 · 尚无子程序或自定义类型":
+    "Main program · No subroutines or custom types",
+  暂停后查看: "Pause to inspect",
+  运行与规范设置: "Execution and language settings",
+  "Guide 版本": "Guide version",
+  逻辑优先级: "Logical precedence",
+  检查模式: "Checking mode",
+  指令上限: "Instruction limit",
+  随机种子: "Random seed",
+  "风格检查（PascalCase / 缩进）": "Style checks (PascalCase / indentation)",
+  "语法依据 Cambridge 官方公开文档。0478/2210 使用 2026–2028 v6；9618 使用所选 Guide 与 June 2024 Insert。AS/A2 特性边界依据 9618 考纲 10、19、20 节。":
+    "0478/2210 uses the 2026–2028 v6 profile. 9618 uses the selected Guide and June 2024 Insert, with separate AS and A2 features.",
+  模糊语义策略: "Runtime policies",
+  "下列选项是官方未完全规定的运行策略；修改后同时应用到解释器和三语言导出。高速优化仅用于默认策略，调试模式始终保留逐语句语义。":
+    "Choose arithmetic, loop, output and filename behavior. These settings apply to the interpreter and all three code exports.",
+  内置函数签名与来源: "Built-in function signatures and sources",
+  默认策略说明: "Default policy details",
+  规范来源: "Specification source",
+  工程策略: "Runtime policy",
+  官方来源: "Specification source",
+  策略: "Policy",
+  未知错误: "Unknown error",
+  " · 参数 ": " · Parameter ",
+  "当前模块控制流 · 菱形：条件 · 平行四边形：输入/输出":
+    "Module control flow · Diamond: condition · Parallelogram: input/output",
+  "执行代码以生成追踪表。调试模式记录语句、循环、模块与分支快照；高速模式不生成追踪表。":
+    "Run your code to generate a trace table. Turn off Fast mode to record statement snapshots.",
+  "IndexedDB 不可用，文件仅在内存中保存。":
+    "IndexedDB is unavailable. Files are kept in this session's memory.",
+};
+
+export function mainText(text: string) {
+  return getLocale() === "zh-CN"
+    ? text
+    : (mainCopy[text] ?? localizeMessage(text));
+}

@@ -1,5 +1,7 @@
 import type { DialectId } from "./dialects";
 import { Machine } from "./runtime";
+import { getLocale, localizeMessage, type Locale } from "./i18n";
+import { practiceEnglish } from "./practice.en";
 
 export interface PracticeCase {
   input: string[];
@@ -381,9 +383,98 @@ export interface PracticeCaseResult {
   line?: number;
   /** Only public sample output is sent to the view. */
   actual?: string[];
+  /** Public-case execution details, retained verbatim for localization on display. */
+  detail?: string;
 }
-export function practiceExercise(id: string) {
-  return practiceExercises.find((item) => item.id === id);
+const englishPracticeExercises = practiceExercises.map((exercise) => {
+  const copy = practiceEnglish[exercise.id];
+  return {
+    ...exercise,
+    ...copy,
+    cases: exercise.cases.map((check, index) => ({
+      ...check,
+      ...copy.cases[index],
+    })),
+  };
+});
+
+export function getPracticeExercises(
+  locale: Locale = getLocale(),
+): PracticeExercise[] {
+  return locale === "zh-CN" ? practiceExercises : englishPracticeExercises;
+}
+
+export function practiceExercise(id: string, locale: Locale = getLocale()) {
+  return getPracticeExercises(locale).find((item) => item.id === id);
+}
+
+/** Rebuild feedback from result data so saved submissions follow the display language. */
+export function practiceResultFeedback(
+  result: PracticeCaseResult,
+  exercise: PracticeExercise,
+  locale: Locale = getLocale(),
+): string {
+  const check =
+    practiceExercise(exercise.id, locale)?.cases[result.index] ||
+    exercise.cases[result.index];
+  const text = (english: string, chinese: string) =>
+    locale === "zh-CN" ? chinese : english;
+  if (!check) return localizeMessage(result.feedback, locale);
+  if (result.passed)
+    return text(`${check.criterion}: passed.`, `${check.criterion}：通过。`);
+  if (result.code === "TIMEOUT")
+    return text(
+      "Execution exceeded 4 seconds and the worker was stopped. Check loops or simplify the program.",
+      "执行超过 4 秒，已终止 Worker。请检查循环或简化程序。",
+    );
+  if (result.code === "NOT_RUN")
+    return text(
+      "This test was skipped after the previous test timed out. Revise the program and submit again.",
+      "因前一测试超时，本测试未执行；修正后重新提交。",
+    );
+  if (result.code === "INPUT_UNUSED")
+    return text(
+      `The program did not read all required inputs. ${check.advice}`,
+      `未读取题目要求的全部输入。${check.advice}`,
+    );
+  if (!result.code)
+    return text(
+      `${check.criterion}: output does not meet the contract. ${check.advice}`,
+      `${check.criterion}：输出未符合契约。${check.advice}`,
+    );
+  const known: Record<string, [string, string]> = {
+    SOURCE_LIMIT: [
+      "Practice grading accepts up to 200,000 source characters. Shorten the answer.",
+      "练习判分只接受 200,000 字符以内的源码；请缩短答卷。",
+    ],
+    INPUT_EXCESS: [
+      "The program requested more input than the exercise contract provides.",
+      "程序请求了题目契约以外的额外输入。",
+    ],
+    OUTPUT_LIMIT: [
+      "The program produced too much output. Check loop termination and output placement.",
+      "程序输出过多；请检查循环终止条件和输出位置。",
+    ],
+  };
+  const knownDetail = known[result.code];
+  const original =
+    result.detail || result.feedback.replace(/^(?:第 \d+ 行：|Line \d+: )/, "");
+  const executionSummary = text(
+    `${check.criterion}: execution failed (${result.code}). ${check.advice}`,
+    `${check.criterion}：执行失败（${result.code}）。${check.advice}`,
+  );
+  const publicDetail = localizeMessage(
+    original || text("Unable to execute answer", "无法执行答卷"),
+    locale,
+  );
+  const detail = check.public
+    ? knownDetail
+      ? text(...knownDetail)
+      : locale === "en" && /\p{Script=Han}/u.test(publicDetail)
+        ? executionSummary
+        : publicDetail
+    : executionSummary;
+  return `${result.line ? text(`Line ${result.line}: `, `第 ${result.line} 行：`) : ""}${detail}`;
 }
 export function normalizePracticeOutput(lines: string[]) {
   return lines
@@ -396,9 +487,17 @@ export function evaluatePracticeCase(
   source: string,
   exercise: PracticeExercise,
   index: number,
+  locale: Locale = getLocale(),
 ): PracticeCaseResult {
   const check = exercise.cases[index];
-  if (!check) throw new Error("不存在的练习测试");
+  const complete = (result: PracticeCaseResult) => ({
+    ...result,
+    feedback: practiceResultFeedback(result, exercise, locale),
+  });
+  if (!check)
+    throw new Error(
+      locale === "zh-CN" ? "不存在的练习测试" : "Practice test does not exist",
+    );
   const base = { index, score: 0, maxScore: check.points, passed: false };
   let output: string[] = [],
     consumed = 0,
@@ -450,18 +549,18 @@ export function evaluatePracticeCase(
       }
     }
     if (consumed !== check.input.length)
-      return {
+      return complete({
         ...base,
         code: "INPUT_UNUSED",
         feedback: `未读取题目要求的全部输入。${check.advice}`,
         ...(check.public ? { actual: output } : {}),
-      };
+      });
     const actual = normalizePracticeOutput(output),
       expected = normalizePracticeOutput(check.output);
     const passed =
       actual.length === expected.length &&
       actual.every((value, i) => value === expected[i]);
-    return {
+    return complete({
       ...base,
       passed,
       score: passed ? check.points : 0,
@@ -469,18 +568,18 @@ export function evaluatePracticeCase(
         ? `${check.criterion}：通过。`
         : `${check.criterion}：输出未符合契约。${check.advice}`,
       ...(check.public ? { actual: output } : {}),
-    };
+    });
   } catch (error) {
     const e = error as { code?: string; message?: string; line?: number };
     const detail = check.public
       ? e.message || "无法执行答卷"
       : `${check.criterion}：执行失败（${e.code || "RUNTIME"}）。${check.advice}`;
-    return {
+    return complete({
       ...base,
       code: e.code || "RUNTIME",
       line: e.line,
       feedback: `${e.line ? `第 ${e.line} 行：` : ""}${detail}`,
-      ...(check.public ? { actual: output } : {}),
-    };
+      ...(check.public ? { actual: output, detail: e.message } : {}),
+    });
   }
 }

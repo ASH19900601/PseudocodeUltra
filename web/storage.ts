@@ -1,5 +1,6 @@
 import type { VirtualFile } from "../core/runtime";
 import { defaultPolicies, type RuntimePolicies } from "../core/policies";
+import { localizeMessage } from "../core/i18n";
 
 // Browsers can refuse both access and writes (private mode, blocked storage or quota).
 // Keep the active session usable and let the UI make the loss of persistence visible.
@@ -124,7 +125,9 @@ export function importFiles(source: string): Record<string, VirtualFile> {
     data.version !== 1 ||
     !Array.isArray(data.objects)
   )
-    throw new Error("无效的虚拟文件备份 / Invalid virtual file backup");
+    throw new Error(
+      localizeMessage("无效的虚拟文件备份 / Invalid virtual file backup"),
+    );
   const objects = data.objects.map((node: any) =>
     node?.type === "map"
       ? new Map()
@@ -145,12 +148,15 @@ export function importFiles(source: string): Record<string, VirtualFile> {
       value.ref >= objects.length ||
       objects[value.ref] === null
     )
-      throw new Error("无效的文件引用 / Invalid file reference");
+      throw new Error(
+        localizeMessage("无效的文件引用 / Invalid file reference"),
+      );
     return objects[value.ref];
   }
   data.objects.forEach((node: any, i: number) => {
     const target = objects[i];
-    if (!target) throw new Error("无效的文件对象 / Invalid file object");
+    if (!target)
+      throw new Error(localizeMessage("无效的文件对象 / Invalid file object"));
     if (node.type === "map")
       for (const [k, v] of node.entries) target.set(decode(k), decode(v));
     else if (node.type === "set")
@@ -168,7 +174,7 @@ export function importFiles(source: string): Record<string, VirtualFile> {
     files instanceof Set ||
     Object.values(files).some((f: any) => !f || typeof f.text !== "string")
   )
-    throw new Error("无效的虚拟文件 / Invalid virtual files");
+    throw new Error(localizeMessage("无效的虚拟文件 / Invalid virtual files"));
   return files;
 }
 export async function database() {
@@ -182,7 +188,11 @@ export async function database() {
     r.onerror = () => reject(r.error);
     r.onblocked = () =>
       reject(
-        new Error("文件数据库被其他页面占用 / Database blocked by another tab"),
+        new Error(
+          localizeMessage(
+            "文件数据库被其他页面占用 / Database blocked by another tab",
+          ),
+        ),
       );
   });
 }

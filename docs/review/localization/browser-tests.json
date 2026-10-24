@@ -1,0 +1,652 @@
+{
+  "stats": {
+    "startTime": "2026-10-24T11:52:32.243Z",
+    "duration": 57505.864,
+    "expected": 64,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "title": "exam.spec.ts / exam locks settings and learning aids, submits a separate answer, and restores the normal draft",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2288
+        }
+      ]
+    },
+    {
+      "title": "exam.spec.ts / exam answer, version and ordinary backup survive refresh until explicit exit",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2371
+        }
+      ]
+    },
+    {
+      "title": "exam.spec.ts / an absolute countdown expires and locks the answer after elapsed browser time",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1293
+        }
+      ]
+    },
+    {
+      "title": "ide.spec.ts / run with INPUT and produce output",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1795
+        }
+      ]
+    },
+    {
+      "title": "ide.spec.ts / step actually pauses before execution, then resume",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1096
+        }
+      ]
+    },
+    {
+      "title": "ide.spec.ts / all AS and A2 examples run in worker",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1453
+        }
+      ]
+    },
+    {
+      "title": "ide.spec.ts / file persistence and source restore",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1117
+        }
+      ]
+    },
+    {
+      "title": "ide.spec.ts / AST, flowchart, native export and reference",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1103
+        }
+      ]
+    },
+    {
+      "title": "ide.spec.ts / responsive layout and no uncaught page errors",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 912
+        }
+      ]
+    },
+    {
+      "title": "ide.spec.ts / breakpoint hits line, pure watch and step-over work",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1105
+        }
+      ]
+    },
+    {
+      "title": "ide.spec.ts / stop cancels a running worker",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 928
+        }
+      ]
+    },
+    {
+      "title": "ide.spec.ts / step into recursion and step out restores caller",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1110
+        }
+      ]
+    },
+    {
+      "title": "large-document.spec.ts / edits cannot retain a previous document's complete analysis status during debounce",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 881
+        }
+      ]
+    },
+    {
+      "title": "large-document.spec.ts / 100000-line real clipboard paste remains responsive, cancellation restores complete diagnostics, and edits/scrolling work",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 4163
+        }
+      ]
+    },
+    {
+      "title": "large-document.spec.ts / 100000-line native insertText input bypasses Chromium's unbounded DOM expansion",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3010
+        }
+      ]
+    },
+    {
+      "title": "locale.spec.ts / fresh profiles start in English, all main views are translated, and Chinese preference persists",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1417
+        }
+      ]
+    },
+    {
+      "title": "locale.spec.ts / nested watch values translate runtime labels and preserve user strings",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 868
+        }
+      ]
+    },
+    {
+      "title": "locale.spec.ts / switching languages preserves edits, cursor, undo and an active INPUT request",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1079
+        }
+      ]
+    },
+    {
+      "title": "locale.spec.ts / all ten exercise tasks, grading feedback and history switch without changing the answer",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1310
+        }
+      ]
+    },
+    {
+      "title": "locale.spec.ts / a running exam retains the same answer and deadline while switching languages",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1786
+        }
+      ]
+    },
+    {
+      "title": "locale.spec.ts / diagnostics and fixes use English, then retranslate when Chinese is selected",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1856
+        }
+      ]
+    },
+    {
+      "title": "locale.spec.ts / English controls and language switching fit the narrow workspace",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1159
+        }
+      ]
+    },
+    {
+      "title": "milestones.spec.ts / M1 diagnostics contain working fixes and official sources",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2033
+        }
+      ]
+    },
+    {
+      "title": "milestones.spec.ts / M2 source version and strictness are configurable and persist",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1527
+        }
+      ]
+    },
+    {
+      "title": "milestones.spec.ts / M4 trace fill-in, automatic grading, CSV and real Excel downloads",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1563
+        }
+      ]
+    },
+    {
+      "title": "milestones.spec.ts / M4 flowchart selects functions and links to source",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1436
+        }
+      ]
+    },
+    {
+      "title": "milestones.spec.ts / M4 full native export includes objects, inheritance, DATE and virtual files",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1561
+        }
+      ]
+    },
+    {
+      "title": "milestones.spec.ts / fast worker mode executes large loop without tracing and remains stoppable",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1350
+        }
+      ]
+    },
+    {
+      "title": "milestones.spec.ts / multiline continuation numbers are hidden and code folds",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1427
+        }
+      ]
+    },
+    {
+      "title": "milestones.spec.ts / PDF print view uses exam font and escapes user source",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 986
+        }
+      ]
+    },
+    {
+      "title": "milestones.spec.ts / function signatures and member completion work while editing",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1193
+        }
+      ]
+    },
+    {
+      "title": "milestones.spec.ts / M4 long traces paginate and preserve independently graded answers",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1442
+        }
+      ]
+    },
+    {
+      "title": "practice.spec.ts / all ten original exercises grade real reference programs in a dedicated Worker",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 4230
+        }
+      ]
+    },
+    {
+      "title": "practice.spec.ts / partial scores, stale-result notice, per-question drafts/history, redo and original source restore",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2094
+        }
+      ]
+    },
+    {
+      "title": "practice.spec.ts / ordinary Run remains interactive and cannot substitute grading inputs",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1389
+        }
+      ]
+    },
+    {
+      "title": "practice.spec.ts / an intentionally empty practice draft survives switching exercises and continuing after reload",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1485
+        }
+      ]
+    },
+    {
+      "title": "practice.spec.ts / a truly blocked grading Worker is terminated on cancel, source edit and exercise change",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1740
+        }
+      ]
+    },
+    {
+      "title": "practice.spec.ts / a blocked Worker hits the wall-clock timeout without freezing the editor",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 5305
+        }
+      ]
+    },
+    {
+      "title": "practice.spec.ts / practice remains usable at phone width with visible question, controls and no horizontal overflow",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1157
+        }
+      ]
+    },
+    {
+      "title": "practice.spec.ts / exam editing and refresh cannot overwrite an active practice draft",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1840
+        }
+      ]
+    },
+    {
+      "title": "theme.spec.ts / saved dark theme restores readable syntax and switching to light survives reload",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1306
+        }
+      ]
+    },
+    {
+      "title": "theme.spec.ts / theme changes retain the source, cursor and undo history",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1285
+        }
+      ]
+    },
+    {
+      "title": "theme.spec.ts / dark completions and search use readable dark surfaces",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1136
+        }
+      ]
+    },
+    {
+      "title": "theme.spec.ts / both themes fit the 1440px workspace without horizontal page overflow",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 938
+        }
+      ]
+    },
+    {
+      "title": "theme.spec.ts / both themes fit the 390px workspace without horizontal page overflow",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1054
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / an intentionally empty source survives page reload",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1063
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / blocked storage leaves an editable runnable app with a visible backup warning",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1084
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / quota errors do not break source edits or execution",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1193
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / invalid persisted numeric and semantic settings fall back to valid defaults",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1017
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / execution waits for persisted virtual files to finish loading",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1721
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / completed programs evaluate newly added pure watches and source edits clear old state",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1282
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / runtime errors keep prior file writes and show the current variables",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1511
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / changing source or target invalidates generated code downloads",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1275
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / virtual text files can be downloaded and the same upload can be selected twice",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 809
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / new virtual files cannot silently overwrite an existing file",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 883
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / editing a file while execution waits for input prevents old snapshots overwriting it",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1194
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / random records survive editing a virtual file's text",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1585
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / trace answers reset when column filters change the meaning of displayed rows",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1552
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / manual, edit-triggered and blur-triggered execution modes work and persist",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2016
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / opening source retains its filename and supports reopening the same file",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 947
+        }
+      ]
+    },
+    {
+      "title": "ux-regressions.spec.ts / output tabs expose keyboard navigation and mobile reference remains visible",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1298
+        }
+      ]
+    },
+    {
+      "title": "workspace-modes.spec.ts / Undo cannot cross exam document boundaries and ordinary editing still has history",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1278
+        }
+      ]
+    },
+    {
+      "title": "workspace-modes.spec.ts / the first keystroke after a suspended deadline locks and rolls back without nested editor updates",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1067
+        }
+      ]
+    },
+    {
+      "title": "workspace-modes.spec.ts / exam execution cannot overwrite the ordinary workspace files",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1656
+        }
+      ]
+    }
+  ]
+}

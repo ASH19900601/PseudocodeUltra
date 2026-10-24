@@ -7,6 +7,17 @@ export default defineConfig({
   workers: 2,
   use: {
     baseURL: "http://127.0.0.1:5173",
+    // Existing behavioral suites explicitly exercise the Chinese interface.
+    // locale.spec.ts overrides this with a fresh profile to verify English defaults.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: "http://127.0.0.1:5173",
+          localStorage: [{ name: "locale", value: "zh-CN" }],
+        },
+      ],
+    },
     headless: true,
     launchOptions: {
       executablePath: browserExecutable(),

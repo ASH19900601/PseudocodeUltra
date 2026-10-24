@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-24T11:53:29.877Z",
+  "scope": "English default and manual Chinese switching; user documentation",
+  "sourceSha256": "bde988b7b58aba6870228d1ccb2c03bc240639a0e12f647c0c06cba9a7926621",
+  "digestScope": "core/, web/, conformance/, scripts/, index.html, package.json, package-lock.json, tsconfig.json, playwright.config.ts, docs/spec-sources.json; sorted relative path followed by raw bytes",
+  "status": "passed",
+  "checks": {
+    "typecheck": "passed",
+    "core": {
+      "tests": 236,
+      "passed": 236,
+      "failed": 0
+    },
+    "native": {
+      "tests": 43,
+      "passed": 43,
+      "failed": 0
+    },
+    "browser": {
+      "startTime": "2026-10-24T11:52:32.243Z",
+      "duration": 57505.864,
+      "expected": 64,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "visual": "Actual installed Edge; 1440x1000 English and Chinese, 390x844 English; screenshots inspected; zero page errors and horizontal page overflow",
+    "readme": "English followed by complete Simplified Chinese; controls and startup commands verified against source; actual English screenshot included"
+  }
+}

@@ -73,6 +73,7 @@ export interface VirtualFile {
   records?: Record<string, any>;
 }
 export interface RunOptions {
+  inspectionUninitialized?: string;
   strict?: boolean;
   maxSteps?: number;
   seed?: number;
@@ -84,13 +85,18 @@ export interface RunOptions {
   fast?: boolean;
   policies?: Partial<RuntimePolicies>;
 }
-export function display(v: any, seen = new Set<any>(), depth = 0): string {
+export function display(
+  v: any,
+  uninitializedText = "未初始化",
+  seen = new Set<any>(),
+  depth = 0,
+): string {
   if (depth > 20) return "…";
   if (v && typeof v === "object") {
     if (seen.has(v)) return "[reference]";
     seen.add(v);
   }
-  if (v === undefined) return "未初始化";
+  if (v === undefined) return uninitializedText;
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   if (v?.tag === "enum") return v.name;
   if (v?.tag === "date") {
@@ -98,12 +104,14 @@ export function display(v: any, seen = new Set<any>(), depth = 0): string {
     return `${d}/${m}/${y}`;
   }
   if (v?.tag === "pointer")
-    return v.cell ? "^" + display(v.cell.value, seen, depth + 1) : "NULL";
+    return v.cell
+      ? "^" + display(v.cell.value, uninitializedText, seen, depth + 1)
+      : "NULL";
   if (v?.tag === "array")
     return (
       "[" +
       [...v.items.values()]
-        .map((c) => display(c.value, seen, depth + 1))
+        .map((c) => display(c.value, uninitializedText, seen, depth + 1))
         .join(", ") +
       "]"
     );
@@ -111,13 +119,20 @@ export function display(v: any, seen = new Set<any>(), depth = 0): string {
     return (
       "{" +
       [...v.scope.vars]
-        .map(([k, c]) => k + ": " + display(c.value, seen, depth + 1))
+        .map(
+          ([k, c]) =>
+            k + ": " + display(c.value, uninitializedText, seen, depth + 1),
+        )
         .join(", ") +
       "}"
     );
   if (v instanceof Set)
     return (
-      "{" + [...v].map((x) => display(x, seen, depth + 1)).join(", ") + "}"
+      "{" +
+      [...v]
+        .map((x) => display(x, uninitializedText, seen, depth + 1))
+        .join(", ") +
+      "}"
     );
   return String(v);
 }
@@ -289,7 +304,9 @@ export class Machine {
     const v: Record<string, any> = {};
     let current: Scope | undefined = s;
     while (current) {
-      for (const [k, c] of current.vars) if (!(k in v)) v[k] = display(c.value);
+      for (const [k, c] of current.vars)
+        if (!(k in v))
+          v[k] = display(c.value, this.options.inspectionUninitialized);
       current = current.parent;
     }
     return v;
@@ -300,8 +317,10 @@ export class Machine {
     let count = 0;
     const value = (v: any, depth = 0): any => {
       if (++count > 500 || depth > 6) return "…";
-      if (v === undefined) return "未初始化";
-      if (v?.tag === "pointer") return display(v);
+      if (v === undefined)
+        return this.options.inspectionUninitialized ?? "未初始化";
+      if (v?.tag === "pointer")
+        return display(v, this.options.inspectionUninitialized);
       if (v?.tag === "date" || v?.tag === "enum") return display(v);
       if (v && typeof v === "object") {
         if (seen.has(v)) return "[reference]";

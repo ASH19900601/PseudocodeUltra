@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-24T11:49:42.977Z",
+  "browser": "Installed Microsoft Edge",
+  "records": [
+    {
+      "locale": "en",
+      "viewport": 1440,
+      "scrollWidth": 1440,
+      "status": "Completed",
+      "output": "Alex · 2008 · 90"
+    },
+    {
+      "locale": "zh-CN",
+      "viewport": 1440,
+      "scrollWidth": 1440,
+      "status": "执行完成",
+      "output": "Alex · 2008 · 90"
+    },
+    {
+      "locale": "en",
+      "viewport": 390,
+      "scrollWidth": 390
+    }
+  ],
+  "pageErrors": []
+}

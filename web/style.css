@@ -186,6 +186,15 @@ h1 em {
   padding: 0;
   font-size: 18px;
 }
+#locale {
+  max-width: 110px;
+  padding: 5px 7px;
+  font-size: 11px;
+}
+html[lang="en"] .panel-heading h2 small,
+html[lang="en"] .debug-section h3 small {
+  display: none;
+}
 #exam-open,
 #practice-open {
   color: var(--text);
@@ -1174,6 +1183,23 @@ dialog textarea {
   }
 }
 @media (max-width: 500px) {
+  header {
+    height: auto;
+    min-height: 52px;
+    padding: 7px 0;
+  }
+  h1 {
+    font-size: 16px;
+  }
+  .header-right {
+    flex: 1;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 170px;
+  }
+  #locale {
+    max-width: 95px;
+  }
   .inspector {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -1,5 +1,6 @@
 import { expression, type Expr } from "../core/lexer";
 import { Machine, display, type Event } from "../core/runtime";
+import { localizeMessage, setCoreLocale, tr } from "../core/i18n";
 let machine: Machine | undefined,
   result: IteratorResult<Event, any> | undefined,
   active = false,
@@ -34,7 +35,8 @@ function fail(e: any) {
   active = false;
   flush();
   send("error", {
-    message: e.message,
+    message: localizeMessage(e.message),
+    rawMessage: e.message,
     code: e.code || "RUNTIME",
     line: e.line || machine?.line || 1,
     column: e.column || machine?.column || 1,
@@ -111,7 +113,11 @@ function pump() {
         return;
       } else {
         flush();
-        send(e.kind, { text: e.text, line: e.line });
+        send(e.kind, {
+          text: e.kind === "warning" ? localizeMessage(e.text || "") : e.text,
+          ...(e.kind === "warning" ? { rawText: e.text } : {}),
+          line: e.line,
+        });
       }
       result = machine.generator.next();
     }
@@ -122,7 +128,22 @@ function pump() {
   }
 }
 onmessage = ({ data: d }) => {
-  if (d.type === "start") {
+  if (d.type === "locale") {
+    setCoreLocale(d.locale === "zh-CN" ? "zh-CN" : "en");
+    if (machine) {
+      machine.options.inspectionUninitialized = tr("Uninitialized", "未初始化");
+      send("debug-locale", {
+        state: {
+          kind: "step",
+          line: machine.line,
+          variables: machine.snapshot(machine.currentScope),
+          values: machine.inspect(machine.currentScope),
+          stack: [...machine.stack],
+        },
+      });
+    }
+  } else if (d.type === "start") {
+    setCoreLocale(d.locale === "zh-CN" ? "zh-CN" : "en");
     clearTimeout(timer);
     trace = [];
     batch = [];
@@ -133,6 +154,7 @@ onmessage = ({ data: d }) => {
     traceLimit = Math.max(1, Math.min(100000, d.traceLimit || 50000));
     try {
       machine = new Machine(d.source, d.dialect, {
+        inspectionUninitialized: tr("Uninitialized", "未初始化"),
         files: d.files,
         maxSteps: d.maxSteps || 100000,
         strict: d.strict,
@@ -218,9 +240,17 @@ onmessage = ({ data: d }) => {
       const g = machine.eval(e, machine.currentScope),
         value = g.next();
       if (!value.done) throw new Error("Watch cannot suspend");
-      send("watch", { expression: d.expression, value: display(value.value) });
+      send("watch", {
+        expression: d.expression,
+        value: display(value.value, tr("Uninitialized", "未初始化")),
+      });
     } catch (e: any) {
-      send("watch", { expression: d.expression, value: e.message });
+      send("watch", {
+        expression: d.expression,
+        value: localizeMessage(e.message),
+        error: true,
+        rawMessage: e.message,
+      });
     } finally {
       machine.line = savedLine;
       machine.column = savedColumn;

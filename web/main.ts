@@ -65,7 +65,17 @@ import {
   exportFiles,
   importFiles,
 } from "./storage";
-import { examples } from "./examples";
+import { getExamples } from "./examples";
+import {
+  tr,
+  getLocale,
+  setLocale,
+  onLocaleChange,
+  localizeMessage,
+  bindStaticLocale,
+} from "./i18n";
+import { mainCopy, mainText } from "./main-copy";
+import { examBuiltinDescription } from "./exam-copy";
 import {
   createExamController,
   type ExamSession,
@@ -81,7 +91,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
 const settings = createSettings(undefined, () =>
   queueMicrotask(() => {
     $("storage-warning").hidden = false;
-    $("save-state").textContent = "未保存 · 请下载";
+    $("save-state").textContent = mainText("未保存 · 请下载");
   }),
 );
 let darkTheme = settings.getItem("theme") === "dark";
@@ -106,6 +116,20 @@ let runMode = settingChoice(
 );
 let autoRunTimer: ReturnType<typeof setTimeout> | undefined;
 let converted = "";
+let lastRunSummary:
+  { steps: number; fast: boolean; truncated: boolean } | undefined;
+function renderRuntimeInfo() {
+  const info = lastRunSummary;
+  $("runtime-info").textContent = info
+    ? tr(
+        `${info.steps} instructions · ${info.fast ? "Fast mode, no trace" : trace.length + " trace rows"}${info.truncated ? " (trace limit reached)" : ""}`,
+        `已执行 ${info.steps} 条指令 · ${info.fast ? "高速模式，无追踪" : trace.length + " 行追踪"}${info.truncated ? "（已达追踪行数上限）" : ""}`,
+      )
+    : tr(
+        `Instruction limit ${maxSteps().toLocaleString("en")} · Random seed ${randomSeed()}`,
+        `指令上限 ${maxSteps().toLocaleString()} · 随机种子 ${randomSeed()}`,
+      );
+}
 const watches = new Set<string>();
 const watchValues = new Map<string, string>();
 const attempts: Record<string, string> = {};
@@ -147,6 +171,7 @@ const maxSteps = () =>
   settingInteger(settings.getItem("maxSteps"), 100000, 1, 1000000000);
 const randomSeed = () =>
   settingInteger(settings.getItem("seed"), 42, 0, 4294967295);
+let referenceLocaleBinding: (() => void) | undefined;
 let userSignatureList: UserSignature[] = [];
 let continuationLines = new Set<number>();
 const numberConfig = new Compartment();
@@ -190,25 +215,38 @@ function renderAnalysisStatus() {
   $("analysis-resume").hidden =
     running || pending || state.status === "complete";
   $("analysis-state").textContent = pending
-    ? "代码已更改，等待分析当前文档"
+    ? mainText("代码已更改，等待分析当前文档")
     : running
-      ? `${state.phase} · ${((Date.now() - state.startedAt) / 1000).toFixed(1)} 秒 · 编辑器可继续操作`
+      ? tr(
+          `${localizeMessage(state.phase || "")} · ${((Date.now() - state.startedAt) / 1000).toFixed(1)} s · You can keep editing`,
+          `${state.phase} · ${((Date.now() - state.startedAt) / 1000).toFixed(1)} 秒 · 编辑器可继续操作`,
+        )
       : state.status === "complete"
-        ? "完整诊断已更新"
+        ? mainText("完整诊断已更新")
         : state.status === "cancelled"
-          ? "分析已取消，文档完整保留；点击重新分析恢复"
-          : `分析失败：${state.phase || "未知错误"}`;
+          ? mainText("分析已取消，文档完整保留；点击重新分析恢复")
+          : tr(
+              `Analysis failed: ${localizeMessage(state.phase || "Unknown error")}`,
+              `分析失败：${state.phase || "未知错误"}`,
+            );
 }
 async function analyzeAsync(source: string) {
   if (analysisPaused)
-    throw Object.assign(new Error("分析已暂停"), { name: "AbortError" });
+    throw Object.assign(new Error(mainText("分析已暂停")), {
+      name: "AbortError",
+    });
   const profileKey = analysisProfileKey();
   const result = await analysisController.request<{
     diagnostics: Diagnostic[];
     signatures: UserSignature[];
     outline: { name: string; kind: string; line: number }[];
     continuations: number[];
-  }>({ source, dialect: language, profileOptions: languageOptions() });
+  }>({
+    source,
+    dialect: language,
+    profileOptions: languageOptions(),
+    locale: getLocale(),
+  });
   if (
     source === editor.state.doc.toString() &&
     profileKey === analysisProfileKey()
@@ -235,9 +273,11 @@ async function languageQuery<T>(
   operation: string,
   detail: Record<string, unknown>,
 ) {
-  if (examMode) throw new DOMException("考试期间关闭学习辅助", "AbortError");
+  if (examMode)
+    throw new DOMException(mainText("考试期间关闭学习辅助"), "AbortError");
   const result = await queryController.request<{ result: T }>({
     type: "query",
+    locale: getLocale(),
     source: editor.state.doc.toString(),
     dialect: language,
     operation,
@@ -253,12 +293,33 @@ const escape = (s: any) =>
         c
       ]!,
   );
+function uiHTML(markup: string) {
+  return markup.replace(/>([^<>]*)</g, (match, value: string) => {
+    const trimmed = value.trim();
+    const translated = mainText(trimmed);
+    return translated === trimmed
+      ? match
+      : ">" + value.replace(trimmed, escape(translated)) + "<";
+  });
+}
 $("app").innerHTML =
-  `<aside class="rail"><a class="brand" href="#" aria-label="Pseudocode Ultra">P<span>u</span></a><button id="workspace-nav" class="rail-active" title="Workspace">⌘<span>编辑器</span></button><button id="examples-nav" title="Examples">▤<span>示例</span></button><button id="help-nav" title="Language reference">?<span>参考</span></button><div class="rail-bottom">CAIE</div></aside><div class="shell"><header><div><span class="eyebrow">COMPUTER SCIENCE LAB</span><h1>Pseudocode <em>Ultra</em></h1></div><div class="header-right"><span class="local-dot"></span>本地执行 · Local-first <button id="practice-open" title="原创练习">练习</button><button id="exam-open" title="考试练习">考试</button><button id="theme" title="Switch theme">◐</button></div></header><div id="storage-warning" class="storage-warning" role="alert" hidden>本机存储不可用或保存失败，部分内容可能仅在本次会话保留。请下载备份。 / Local storage failed; download a backup.</div><section class="toolbar"><div class="select-wrap"><label for="dialect">方言</label><select id="dialect"><option>0478</option><option>2210</option><option>9618-AS</option><option>9618-A2</option></select></div><span class="divider"></span><button id="run" class="primary">▶ 运行 <kbd>Ctrl ↵</kbd></button><select id="run-mode" aria-label="运行方式 / Run mode"><option value="manual">手动运行</option><option value="change">输入后运行</option><option value="blur">失焦时运行</option></select><label class="fast-toggle" title="高速执行不生成追踪表，调试请关闭"><input id="fast-mode" type="checkbox">高速</label><button id="pause" disabled>Ⅱ 暂停</button><button id="step">↳ 单步</button><button id="over" disabled>↷ 跳过</button><button id="out" disabled>↑ 跳出</button><button id="stop" disabled>■ 停止</button><span class="toolbar-space"></span><button id="format">格式化</button><button id="print-pdf">PDF</button><button id="download">↓ 保存</button><button id="upload">↑ 打开</button><input id="source-upload" type="file" accept=".txt,.pseudo,.psc" hidden></section><main><section class="editor-panel panel"><div class="panel-heading"><div class="file-tab"><span class="file-icon">⌁</span> <span id="source-name">${escape(sourceName)}</span><span id="save-state" class="save-state" role="status">已保存本机</span></div><select id="examples" aria-label="Load example"><option value="">示例程序 / Examples</option>${examples.map((e, i) => `<option value="${i}">${e.name}</option>`).join("")}</select></div><div id="editor"></div><div id="signature-help" hidden></div><div class="editor-footer"><span id="cursor">Ln 1, Col 1</span><span>UTF-8 <span id="indent">4 spaces</span><button id="clear-breakpoints">清除断点</button></span></div></section><aside class="inspector panel"><div class="panel-heading"><h2>调试工作台 <small>DEBUGGER</small></h2><span id="status" class="status" role="status" aria-live="polite">就绪</span></div><div class="debug-section"><h3>变量 <small>VARIABLES</small></h3><div id="variables" class="empty">运行或单步执行后查看变量</div></div><div class="debug-section"><h3>监视表达式 <small>WATCH</small></h3><form id="watch-form"><input id="watch-input" placeholder="变量名称，例如 Total" aria-label="Watch variable"><button>＋</button></form><div id="watches"></div></div><div class="debug-section"><h3>调用栈 <small>CALL STACK</small></h3><div id="stack" class="empty">尚未进入子程序</div></div><div class="debug-section"><h3>虚拟文件 <small>FILES · IndexedDB</small></h3><div id="files"></div><button id="add-file">＋ 新建文件</button><button id="import-file">↑ 导入文件</button><button id="backup-files">↓ 备份全部</button><input id="file-upload" type="file" hidden></div><div class="debug-section"><h3>代码大纲 <small>OUTLINE</small></h3><div id="outline"></div></div><div class="policy-note"><span>ℹ</span><div>Cambridge 规范版本可配置<br><small>依据官方 Guide / Insert / v6 考纲实现。具体来源与模糊语义策略见语言参考。</small></div></div></aside><section class="output-panel panel"><nav class="tabs" role="tablist" aria-label="Output panels"><button data-tab="console" class="selected">终端 <span>CONSOLE</span></button><button data-tab="diagnostics">诊断 <span id="diagnostic-count">0</span></button><button data-tab="trace">追踪表</button><button data-tab="flow">流程图</button><button data-tab="ast">AST / Tokens</button><button data-tab="export">代码转换</button><button data-tab="reference">语言参考</button><button data-tab="practice">原创练习</button></nav><div id="console" class="tab-pane"><div id="console-output"><div class="terminal-hint">Pseudocode Ultra runtime<br><span>准备好了。点击运行，或点击行号旁设置断点后开始单步执行。</span></div></div><form id="input-form" hidden><label for="runtime-input">INPUT →</label><input id="runtime-input" autocomplete="off" placeholder="输入值后按 Enter"><button class="primary">提交</button></form></div><div id="diagnostics" class="tab-pane" hidden></div><div id="trace" class="tab-pane" hidden><div class="pane-actions"><button id="csv">↓ CSV</button><button id="xlsx">↓ Excel</button><label><input id="trace-blank" type="checkbox"> 填空练习</label><button id="grade-trace">批改本页</button><span id="trace-grade"></span><select id="trace-filter" aria-label="Trace row policy"><option value="all">每条语句</option><option value="changes">仅变量变化</option><option value="modules">模块进入/返回</option><option value="loops">每次循环</option><option value="branches">IF/CASE 分支</option><option value="left-to-right">从左到右</option></select><input id="trace-columns" aria-label="Trace columns" placeholder="列顺序，如 I, Total"><label><input id="hide-repeats" type="checkbox"> 隐藏重复值</label></div><div class="pane-actions"><button id="trace-prev">上一页</button><span id="trace-page" aria-live="polite"></span><button id="trace-next">下一页</button></div><div id="trace-table"></div></div><div id="flow" class="tab-pane" hidden><select id="flow-module" aria-label="Flowchart module"></select><div id="flow-content"></div></div><div id="ast" class="tab-pane" hidden><select id="ast-mode" aria-label="AST or Tokens"><option>AST</option><option>Tokens</option></select><pre id="ast-content"></pre></div><div id="export" class="tab-pane" hidden><div class="pane-actions"><select id="target" aria-label="转换语言 / Target language"><option value="python">Python 3</option><option value="java">Java 17+</option><option value="vb">VB.NET</option></select><button id="convert">转换</button><button id="export-download" disabled>↓ 下载</button><span>完整类型与虚拟文件语义 · 独立程序，仅依赖目标语言标准库。</span></div><pre id="export-content"></pre></div><div id="reference" class="tab-pane" hidden></div><div id="practice" class="tab-pane" hidden></div></section></main><footer><span><i></i> 不上传源码 · 在浏览器 Worker 中执行</span><span id="runtime-info">指令上限 100,000 · 确定性随机种子</span></footer></div><dialog id="file-dialog" aria-labelledby="file-title"><form method="dialog"><h2 id="file-title">文件</h2><p id="file-record-note" hidden>此文件包含随机记录；修改文本会保留所有记录。 / Random records will be preserved.</p><textarea aria-labelledby="file-title" id="file-text" spellcheck="false"></textarea><div class="dialog-actions"><button value="cancel">取消</button><button id="file-save" value="save" class="primary">保存</button></div></form></dialog>`;
+  `<aside class="rail"><a class="brand" href="#" aria-label="Pseudocode Ultra">P<span>u</span></a><button id="workspace-nav" class="rail-active" title="Workspace">⌘<span>编辑器</span></button><button id="examples-nav" title="Examples">▤<span>示例</span></button><button id="help-nav" title="Language reference">?<span>参考</span></button><div class="rail-bottom">CAIE</div></aside><div class="shell"><header><div><span class="eyebrow">COMPUTER SCIENCE LAB</span><h1>Pseudocode <em>Ultra</em></h1></div><div class="header-right"><span class="local-dot"></span>本地执行 · Local-first <button id="practice-open" title="原创练习">练习</button><button id="exam-open" title="考试练习">考试</button><select id="locale" aria-label="Interface language"><option value="en">English</option><option value="zh-CN">简体中文</option></select><button id="theme" title="Switch theme">◐</button></div></header><div id="storage-warning" class="storage-warning" role="alert" hidden>本机存储不可用或保存失败，部分内容可能仅在本次会话保留。请下载备份。 / Local storage failed; download a backup.</div><section class="toolbar"><div class="select-wrap"><label for="dialect">方言</label><select id="dialect"><option>0478</option><option>2210</option><option>9618-AS</option><option>9618-A2</option></select></div><span class="divider"></span><button id="run" class="primary">▶ 运行 <kbd>Ctrl ↵</kbd></button><select id="run-mode" aria-label="运行方式 / Run mode"><option value="manual">手动运行</option><option value="change">输入后运行</option><option value="blur">失焦时运行</option></select><label class="fast-toggle" title="高速执行不生成追踪表，调试请关闭"><input id="fast-mode" type="checkbox">高速</label><button id="pause" disabled>Ⅱ 暂停</button><button id="step">↳ 单步</button><button id="over" disabled>↷ 跳过</button><button id="out" disabled>↑ 跳出</button><button id="stop" disabled>■ 停止</button><span class="toolbar-space"></span><button id="format">格式化</button><button id="print-pdf">PDF</button><button id="download">↓ 保存</button><button id="upload">↑ 打开</button><input id="source-upload" type="file" accept=".txt,.pseudo,.psc" hidden></section><main><section class="editor-panel panel"><div class="panel-heading"><div class="file-tab"><span class="file-icon">⌁</span> <span id="source-name">${escape(sourceName)}</span><span id="save-state" class="save-state" role="status">已保存本机</span></div><select id="examples" aria-label="Load example"><option value="">示例程序 / Examples</option>${getExamples()
+    .map((e, i) => `<option value="${i}">${e.name}</option>`)
+    .join(
+      "",
+    )}</select></div><div id="editor"></div><div id="signature-help" hidden></div><div class="editor-footer"><span id="cursor">Ln 1, Col 1</span><span>UTF-8 <span id="indent">4 spaces</span><button id="clear-breakpoints">清除断点</button></span></div></section><aside class="inspector panel"><div class="panel-heading"><h2>调试工作台 <small>DEBUGGER</small></h2><span id="status" class="status" role="status" aria-live="polite">就绪</span></div><div class="debug-section"><h3>变量 <small>VARIABLES</small></h3><div id="variables" class="empty">运行或单步执行后查看变量</div></div><div class="debug-section"><h3>监视表达式 <small>WATCH</small></h3><form id="watch-form"><input id="watch-input" placeholder="变量名称，例如 Total" aria-label="Watch variable"><button>＋</button></form><div id="watches"></div></div><div class="debug-section"><h3>调用栈 <small>CALL STACK</small></h3><div id="stack" class="empty">尚未进入子程序</div></div><div class="debug-section"><h3>虚拟文件 <small>FILES · IndexedDB</small></h3><div id="files"></div><button id="add-file">＋ 新建文件</button><button id="import-file">↑ 导入文件</button><button id="backup-files">↓ 备份全部</button><input id="file-upload" type="file" hidden></div><div class="debug-section"><h3>代码大纲 <small>OUTLINE</small></h3><div id="outline"></div></div><div class="policy-note"><span>ℹ</span><div>Cambridge 规范版本可配置<br><small>依据官方 Guide / Insert / v6 考纲实现。具体来源与模糊语义策略见语言参考。</small></div></div></aside><section class="output-panel panel"><nav class="tabs" role="tablist" aria-label="Output panels"><button data-tab="console" class="selected">终端 <span>CONSOLE</span></button><button data-tab="diagnostics">诊断 <span id="diagnostic-count">0</span></button><button data-tab="trace">追踪表</button><button data-tab="flow">流程图</button><button data-tab="ast">AST / Tokens</button><button data-tab="export">代码转换</button><button data-tab="reference">语言参考</button><button data-tab="practice">原创练习</button></nav><div id="console" class="tab-pane"><div id="console-output"><div class="terminal-hint">Pseudocode Ultra runtime<br><span>准备好了。点击运行，或点击行号旁设置断点后开始单步执行。</span></div></div><form id="input-form" hidden><label for="runtime-input">INPUT →</label><input id="runtime-input" autocomplete="off" placeholder="输入值后按 Enter"><button class="primary">提交</button></form></div><div id="diagnostics" class="tab-pane" hidden></div><div id="trace" class="tab-pane" hidden><div class="pane-actions"><button id="csv">↓ CSV</button><button id="xlsx">↓ Excel</button><label><input id="trace-blank" type="checkbox"> 填空练习</label><button id="grade-trace">批改本页</button><span id="trace-grade"></span><select id="trace-filter" aria-label="Trace row policy"><option value="all">每条语句</option><option value="changes">仅变量变化</option><option value="modules">模块进入/返回</option><option value="loops">每次循环</option><option value="branches">IF/CASE 分支</option><option value="left-to-right">从左到右</option></select><input id="trace-columns" aria-label="Trace columns" placeholder="列顺序，如 I, Total"><label><input id="hide-repeats" type="checkbox"> 隐藏重复值</label></div><div class="pane-actions"><button id="trace-prev">上一页</button><span id="trace-page" aria-live="polite"></span><button id="trace-next">下一页</button></div><div id="trace-table"></div></div><div id="flow" class="tab-pane" hidden><select id="flow-module" aria-label="Flowchart module"></select><div id="flow-content"></div></div><div id="ast" class="tab-pane" hidden><select id="ast-mode" aria-label="AST or Tokens"><option>AST</option><option>Tokens</option></select><pre id="ast-content"></pre></div><div id="export" class="tab-pane" hidden><div class="pane-actions"><select id="target" aria-label="转换语言 / Target language"><option value="python">Python 3</option><option value="java">Java 17+</option><option value="vb">VB.NET</option></select><button id="convert">转换</button><button id="export-download" disabled>↓ 下载</button><span>完整类型与虚拟文件语义 · 独立程序，仅依赖目标语言标准库。</span></div><pre id="export-content"></pre></div><div id="reference" class="tab-pane" hidden></div><div id="practice" class="tab-pane" hidden></div></section></main><footer><span><i></i> 不上传源码 · 在浏览器 Worker 中执行</span><span id="runtime-info">指令上限 100,000 · 确定性随机种子</span></footer></div><dialog id="file-dialog" aria-labelledby="file-title"><form method="dialog"><h2 id="file-title">文件</h2><p id="file-record-note" hidden>此文件包含随机记录；修改文本会保留所有记录。 / Random records will be preserved.</p><textarea aria-labelledby="file-title" id="file-text" spellcheck="false"></textarea><div class="dialog-actions"><button value="cancel">取消</button><button id="file-save" value="save" class="primary">保存</button></div></form></dialog>`;
 $("editor").insertAdjacentHTML(
   "afterend",
-  `<div class="analysis-controls"><progress id="analysis-progress" aria-label="语言分析进度" hidden></progress><span id="analysis-state" role="status" aria-live="polite">等待分析</span><button id="analysis-cancel" hidden>取消分析</button><button id="analysis-resume" hidden>重新分析</button></div>`,
+  `<div class="analysis-controls"><progress id="analysis-progress" aria-label="语言分析进度" hidden></progress><span id="analysis-state" role="status" aria-live="polite">${mainText("等待分析")}</span><button id="analysis-cancel" hidden>取消分析</button><button id="analysis-resume" hidden>重新分析</button></div>`,
 );
+bindStaticLocale(
+  $("app"),
+  mainCopy,
+  "#source-name,#file-title,#status,#save-state,#cursor,#indent,#runtime-info,#locale",
+);
+$<HTMLSelectElement>("locale").value = getLocale();
+$("locale").onchange = () =>
+  setLocale($<HTMLSelectElement>("locale").value as "en" | "zh-CN");
 $("analysis-cancel").onclick = () => {
   analysisPaused = true;
   analysisController.cancel();
@@ -328,10 +389,10 @@ const setupConfig = new Compartment(),
   readOnlyConfig = new Compartment();
 const editor = new EditorView({
   state: EditorState.create({
-    doc: settings.getItem("source") ?? examples[0].code,
+    doc: settings.getItem("source") ?? getExamples()[0].code,
     extensions: [
       EditorView.contentAttributes.of({
-        "aria-label": "伪代码编辑器 / Pseudocode editor",
+        "aria-label": mainText("伪代码编辑器 / Pseudocode editor"),
         spellcheck: "false",
       }),
       EditorView.domEventHandlers({
@@ -380,6 +441,15 @@ const editor = new EditorView({
           }
           if (examMode || view.state.doc !== doc) return null;
           if (!description) return null;
+          const builtin = builtinSignature(
+            doc.sliceString(word.from, word.to).toUpperCase(),
+            currentProfile(),
+          );
+          if (builtin)
+            description = description.replace(
+              builtin.description,
+              examBuiltinDescription(builtin.name, builtin.description),
+            );
           return {
             pos: word.from,
             end: word.to,
@@ -562,7 +632,7 @@ const editor = new EditorView({
                   },
                 })),
                 severity: d.severity,
-                message: `${d.code} · ${d.message}\n${d.source.doc} (${d.source.version}, ${d.source.section}; ${d.source.verified ? "官方来源" : "策略"})`,
+                message: `${d.code} · ${d.message}\n${d.source.doc} (${d.source.version}, ${d.source.section}; ${d.source.verified ? mainText("官方来源") : mainText("策略")})`,
               };
             });
           },
@@ -645,7 +715,7 @@ const editor = new EditorView({
           if (hint)
             $("signature-help").textContent =
               hint.label +
-              " · 参数 " +
+              mainText(" · 参数 ") +
               (hint.activeParameter + 1) +
               " · " +
               hint.source;
@@ -695,16 +765,18 @@ function renderDiagnostics() {
   const start = diagnosticPage * diagnosticPageSize;
   $("diagnostics").innerHTML = d.length
     ? (d.length > diagnosticPageSize
-        ? `<div class="pane-actions"><button id="diagnostic-prev" ${diagnosticPage === 0 ? "disabled" : ""}>上一页</button><span>第 ${diagnosticPage + 1} / ${Math.ceil(d.length / diagnosticPageSize)} 页 · 共 ${d.length} 条完整诊断</span><button id="diagnostic-next" ${start + diagnosticPageSize >= d.length ? "disabled" : ""}>下一页</button><button id="diagnostic-save">下载全部诊断</button></div>`
+        ? `<div class="pane-actions"><button id="diagnostic-prev" ${diagnosticPage === 0 ? "disabled" : ""}>${mainText("上一页")}</button><span>${tr(`Page ${diagnosticPage + 1} / ${Math.ceil(d.length / diagnosticPageSize)} · ${d.length} diagnostics`, `第 ${diagnosticPage + 1} / ${Math.ceil(d.length / diagnosticPageSize)} 页 · 共 ${d.length} 条完整诊断`)}</span><button id="diagnostic-next" ${start + diagnosticPageSize >= d.length ? "disabled" : ""}>${mainText("下一页")}</button><button id="diagnostic-save">${mainText("下载全部诊断")}</button></div>`
         : "") +
       d
         .slice(start, start + diagnosticPageSize)
         .map(
           (x, index) =>
-            `<div class="diagnostic ${x.severity}"><button class="diagnostic-jump" data-line="${x.line}"><strong>${escape(x.code)}</strong><span>${escape(x.message)}</span><small>Line ${x.line} · ${escape(x.source.doc)} · ${escape(x.source.section)} · ${x.source.verified ? "规范来源" : "工程策略"}</small></button>${(x.actions || []).map((a, i) => `<button class="diagnostic-fix" data-fix="${start + index}:${i}">${escape(a.name)}</button>`).join("")}</div>`,
+            `<div class="diagnostic ${x.severity}"><button class="diagnostic-jump" data-line="${x.line}"><strong>${escape(x.code)}</strong><span>${escape(x.message)}</span><small>Line ${x.line} · ${escape(x.source.doc)} · ${escape(x.source.section)} · ${x.source.verified ? mainText("规范来源") : mainText("工程策略")}</small></button>${(x.actions || []).map((a, i) => `<button class="diagnostic-fix" data-fix="${start + index}:${i}">${escape(a.name)}</button>`).join("")}</div>`,
         )
         .join("")
-    : '<div class="empty">未发现静态诊断。运行时仍会检查类型、边界和文件状态。</div>';
+    : uiHTML(
+        '<div class="empty">未发现静态诊断。运行时仍会检查类型、边界和文件状态。</div>',
+      );
 
   if ($("diagnostic-prev"))
     $("diagnostic-prev").onclick = () => {
@@ -724,8 +796,10 @@ function renderDiagnostics() {
         "application/json",
       );
 }
+let statusKey = "就绪";
 function status(s: string) {
-  $("status").textContent = s;
+  statusKey = s;
+  $("status").textContent = mainText(s);
 }
 function buttons() {
   const locked = examLocked;
@@ -747,17 +821,19 @@ function clearDebugState() {
   for (const key of Object.keys(attempts)) delete attempts[key];
   lastEvent = undefined;
   watchValues.clear();
-  $("variables").innerHTML =
-    '<span class="empty">运行或单步执行后查看变量</span>';
-  $("stack").innerHTML = '<span class="empty">尚未进入子程序</span>';
+  $("variables").innerHTML = uiHTML(
+    '<span class="empty">运行或单步执行后查看变量</span>',
+  );
+  $("stack").innerHTML = uiHTML('<span class="empty">尚未进入子程序</span>');
   mark(0);
   paintWatches();
   if (tab === "trace") renderTrace();
 }
 function invalidateConversion() {
   converted = "";
-  $("export-content").textContent =
-    "源码、设置或文件变化后，请重新转换。 / Convert the current program.";
+  $("export-content").textContent = mainText(
+    "源码、设置或文件变化后，请重新转换。 / Convert the current program.",
+  );
   $<HTMLButtonElement>("export-download").disabled = true;
 }
 function scheduleAutoRun() {
@@ -790,7 +866,8 @@ function scheduleAutoRun() {
 function log(s: string, cls = "") {
   const row = document.createElement("div");
   row.className = cls;
-  row.textContent = s;
+  row.textContent = cls ? localizeMessage(s) : s;
+  if (cls) row.dataset.systemMessage = s;
   $("console-output").append(row);
   $("console-output").scrollTop = $("console-output").scrollHeight;
 }
@@ -811,7 +888,7 @@ function renderState(e: Event) {
     ? Object.entries(vars)
         .map(([k, v]) => inspectorValue(k, e.values?.[k] ?? v))
         .join("")
-    : '<span class="empty">当前作用域没有变量</span>';
+    : uiHTML('<span class="empty">当前作用域没有变量</span>');
   $("stack").innerHTML = e.stack?.length
     ? e.stack
         .map(
@@ -871,11 +948,13 @@ function start(mode: string) {
     } else if (d.type === "step" || d.type === "trace") {
       trace.push(d.event);
       lastEvent = d.event;
+    } else if (d.type === "debug-locale") {
+      if (d.state) renderState(d.state);
     } else if (d.type === "watch") {
       watchValues.set(d.expression, d.value);
       paintWatches();
     } else if (d.type === "output") log(d.text);
-    else if (d.type === "warning") log("⚠ " + d.text, "warning");
+    else if (d.type === "warning") log("⚠ " + (d.rawText ?? d.text), "warning");
     else if (d.type === "paused") {
       paused = true;
       status("已暂停");
@@ -904,8 +983,12 @@ function start(mode: string) {
       if (d.state) renderState(d.state);
       else if (lastEvent) renderState(lastEvent);
       renderFiles();
-      $("runtime-info").textContent =
-        `已执行 ${d.steps} 条指令 · ${fastBusy ? "高速模式，无追踪" : trace.length + " 行追踪"}${d.truncated ? "（已达追踪行数上限）" : ""}`;
+      lastRunSummary = {
+        steps: d.steps,
+        fast: fastBusy,
+        truncated: !!d.truncated,
+      };
+      renderRuntimeInfo();
       buttons();
       refreshTab();
     } else if (d.type === "error") {
@@ -922,7 +1005,7 @@ function start(mode: string) {
       }
       if (d.state) renderState(d.state);
       log(
-        `${d.code} · Line ${d.line}:${d.column || 1}\n${d.message}${d.stack?.length ? "\n" + d.stack.join(" → ") : ""}${d.source ? `\n${d.source.doc} ${d.source.section} (${d.source.version}; ${d.source.verified ? "官方来源" : "工程策略"})` : ""}`,
+        `${d.code} · Line ${d.line}:${d.column || 1}\n${d.rawMessage ?? d.message}${d.stack?.length ? "\n" + d.stack.join(" → ") : ""}${d.source ? `\n${d.source.doc} ${d.source.section} (${d.source.version}; ${d.source.verified ? mainText("官方来源") : mainText("工程策略")})` : ""}`,
         "error",
       );
       $("input-form").hidden = true;
@@ -939,6 +1022,7 @@ function start(mode: string) {
   };
   worker.postMessage({
     type: "start",
+    locale: getLocale(),
     source: editor.state.doc.toString(),
     dialect: language,
     mode,
@@ -1034,7 +1118,7 @@ setDialect(language);
 $("examples").onchange = () => {
   const v = $<HTMLSelectElement>("examples").value;
   if (v === "") return;
-  const ex = examples[Number(v)];
+  const ex = getExamples()[Number(v)];
   setDialect(ex.dialect as DialectId);
   setSource(ex.code);
   sourceName = "main.pseudo";
@@ -1072,7 +1156,10 @@ $("source-upload").onchange = async () => {
       $("source-name").textContent = sourceName;
     }
   } catch (error: any) {
-    log("无法打开源码 / Unable to open source: " + error.message, "error");
+    log(
+      mainText("无法打开源码 / Unable to open source: ") + error.message,
+      "error",
+    );
     showTab("console");
   } finally {
     input.value = "";
@@ -1101,7 +1188,7 @@ function paintWatches() {
   $("watches").innerHTML = [...watches]
     .map(
       (k) =>
-        `<div class="watch"><code>${escape(k)}</code><span>${escape(watchValues.get(k) ?? lastEvent?.variables?.[k.toUpperCase()] ?? "暂停后查看")}</span><button data-remove-watch="${escape(k)}" aria-label="Remove watch">×</button></div>`,
+        `<div class="watch"><code>${escape(k)}</code><span>${escape(watchValues.get(k) ?? lastEvent?.variables?.[k.toUpperCase()] ?? mainText("暂停后查看"))}</span><button data-remove-watch="${escape(k)}" aria-label="Remove watch">×</button></div>`,
     )
     .join("");
 }
@@ -1181,13 +1268,17 @@ function renderTrace() {
   tracePage = Math.max(0, Math.min(tracePage, pages - 1));
   const start = tracePage * tracePageSize,
     visible = rows.slice(start, start + tracePageSize);
-  $("trace-page").textContent =
-    `${tracePage + 1} / ${pages} · ${rows.length} 行`;
+  $("trace-page").textContent = tr(
+    `${tracePage + 1} / ${pages} · ${rows.length} rows`,
+    `${tracePage + 1} / ${pages} · ${rows.length} 行`,
+  );
   $<HTMLButtonElement>("trace-prev").disabled = tracePage === 0;
   $<HTMLButtonElement>("trace-next").disabled = tracePage === pages - 1;
   $("trace-table").innerHTML = rows.length
     ? `<table><thead><tr><th>Line</th><th>Call stack</th>${columns.map((c) => `<th>${escape(c)}</th>`).join("")}</tr></thead><tbody>${visible.map((r, i) => `<tr><td>${r.line}</td><td>${escape(r.stack)}</td>${columns.map((c) => `<td>${blank ? `<input class="trace-answer" aria-label="Row ${start + i + 1} ${escape(c)}" data-answer="${start + i + ":" + escape(c)}" value="${escape(attempts[start + i + ":" + c] || "")}">` : escape(r.variables[c])}</td>`).join("")}</tr>`).join("")}</tbody></table>`
-    : '<div class="empty">执行代码以生成追踪表。调试模式记录语句、循环、模块与分支快照；高速模式不生成追踪表。</div>';
+    : uiHTML(
+        '<div class="empty">执行代码以生成追踪表。调试模式记录语句、循环、模块与分支快照；高速模式不生成追踪表。</div>',
+      );
 }
 for (const [id, delta] of [
   ["trace-prev", -1],
@@ -1257,12 +1348,14 @@ $("grade-trace").onclick = () => {
       input.classList.toggle("correct", a.correct);
       input.classList.toggle("incorrect", !a.correct);
       input.title = a.correct
-        ? "正确 / Correct"
-        : "应为 / Expected: " + a.expected;
+        ? mainText("正确 / Correct")
+        : mainText("应为 / Expected: ") + a.expected;
     }
   }
-  $("trace-grade").textContent =
-    `${answers.filter((a) => a.correct).length} / ${answers.length} 正确`;
+  $("trace-grade").textContent = tr(
+    `${answers.filter((a) => a.correct).length} / ${answers.length} correct`,
+    `${answers.filter((a) => a.correct).length} / ${answers.length} 正确`,
+  );
 };
 function renderFlow() {
   const f = flowchart(
@@ -1294,7 +1387,7 @@ function renderFlow() {
     return `<g class="${cls}" data-line="${n.line}">${polygon}<text x="450" y="${y + 35}" text-anchor="middle">${escape(n.label.slice(0, 54))}</text></g>`;
   };
   $("flow-content").innerHTML =
-    `<p class="flow-note">当前模块控制流 · 菱形：条件 · 平行四边形：输入/输出</p><svg viewBox="0 0 ${width} ${f.nodes.length * row + 60}" role="img" aria-label="Program control flow"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#70869a"/></marker></defs>${f.edges
+    `<p class="flow-note">${mainText("当前模块控制流 · 菱形：条件 · 平行四边形：输入/输出")}</p><svg viewBox="0 0 ${width} ${f.nodes.length * row + 60}" role="img" aria-label="Program control flow"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#70869a"/></marker></defs>${f.edges
       .map((e, i) => {
         const a = e.from * row + 90,
           b = e.to * row + 30;
@@ -1315,7 +1408,7 @@ function renderAST() {
       2,
     );
   } catch (e: any) {
-    $("ast-content").textContent = e.message;
+    $("ast-content").textContent = localizeMessage(e.message);
   }
 }
 $("flow-module").onchange = renderFlow;
@@ -1365,7 +1458,7 @@ $("convert").onclick = async () => {
     $<HTMLButtonElement>("export-download").disabled = !converted;
   } catch (e: any) {
     converted = "";
-    $("export-content").textContent = e.message;
+    $("export-content").textContent = localizeMessage(e.message);
     $<HTMLButtonElement>("export-download").disabled = true;
   } finally {
     $<HTMLButtonElement>("convert").disabled = examMode;
@@ -1407,13 +1500,15 @@ function renderReference() {
       .join("")}</div><h3>内置函数签名与来源</h3>${p.builtins
       .map((name) => {
         const sig = builtinSignature(name, p)!;
-        return `<details class="signature-entry"><summary><code>${escape(signatureText(sig))}</code></summary><p>${escape(sig.description)}</p><a href="${sig.source.url}" target="_blank" rel="noreferrer">${escape(sig.source.doc)} · ${escape(sig.source.version)} · ${escape(sig.source.section)}</a></details>`;
+        return `<details class="signature-entry"><summary><code>${escape(signatureText(sig))}</code></summary><p>${escape(examBuiltinDescription(name, sig.description))}</p><a href="${sig.source.url}" target="_blank" rel="noreferrer">${escape(sig.source.doc)} · ${escape(sig.source.version)} · ${escape(sig.source.section)}</a></details>`;
       })
       .join("")}<h3>默认策略说明</h3><table>${Object.entries(p.policies)
       .map(([k, v]) => `<tr><th>${escape(k)}</th><td>${escape(v)}</td></tr>`)
       .join(
         "",
       )}</table><h3>规范来源</h3><a href="${p.source.url}" target="_blank" rel="noreferrer">${escape(p.source.doc)} · ${escape(p.source.version)} · ${escape(p.source.section)}</a>`;
+  referenceLocaleBinding?.();
+  referenceLocaleBinding = bindStaticLocale($("reference"), mainCopy);
   $("logical-precedence").onchange = () => {
     settings.setItem(
       "logicalPrecedence",
@@ -1461,11 +1556,11 @@ function renderReference() {
         settings.setItem(name, input.value);
         stop();
         invalidateConversion();
-        $("runtime-info").textContent =
-          `指令上限 ${maxSteps().toLocaleString()} · 随机种子 ${randomSeed()}`;
+        lastRunSummary = undefined;
+        renderRuntimeInfo();
       } else {
         if (input.value && !Number.isInteger(Number(input.value)))
-          input.setCustomValidity("请输入整数 / Enter an integer");
+          input.setCustomValidity(mainText("请输入整数 / Enter an integer"));
         input.reportValidity();
         input.value = String(name === "seed" ? randomSeed() : maxSteps());
         input.setCustomValidity("");
@@ -1510,16 +1605,16 @@ function renderFiles() {
     ? Object.keys(files)
         .map(
           (k) =>
-            `<div class="virtual-file"><button data-file="${escape(k)}" title="${escape(k)}">▤ ${escape(k)}</button><button data-export-file="${escape(k)}" aria-label="下载文件 / Download ${escape(k)}" title="下载文件 / Download">↓</button><button data-delete="${escape(k)}" aria-label="删除文件 / Delete ${escape(k)}">×</button></div>`,
+            `<div class="virtual-file"><button data-file="${escape(k)}" title="${escape(k)}">▤ ${escape(k)}</button><button data-export-file="${escape(k)}" aria-label="${mainText("下载文件 / Download")} ${escape(k)}" title="${mainText("下载文件 / Download")}">↓</button><button data-delete="${escape(k)}" aria-label="${mainText("删除文件 / Delete")} ${escape(k)}">×</button></div>`,
         )
         .join("")
-    : '<span class="empty">暂无文件 · 运行 WRITEFILE 可创建</span>';
+    : uiHTML('<span class="empty">暂无文件 · 运行 WRITEFILE 可创建</span>');
 }
 async function persistFiles() {
   try {
     await saveFiles(files);
   } catch {
-    log("文件持久化失败，请导出备份。", "warning");
+    log(mainText("文件持久化失败，请导出备份。"), "warning");
     $("storage-warning").hidden = false;
   }
 }
@@ -1531,11 +1626,13 @@ function editFile(name: string) {
   $<HTMLDialogElement>("file-dialog").showModal();
 }
 $("add-file").onclick = () => {
-  const name = prompt("文件名 / Filename");
+  const name = prompt(mainText("文件名 / Filename"));
   if (name?.trim()) {
     if (Object.prototype.hasOwnProperty.call(files, name.trim())) {
       alert(
-        "文件已存在，请点击文件名编辑，或选择不同名称。 / File exists. Open it to edit or choose another name.",
+        mainText(
+          "文件已存在，请点击文件名编辑，或选择不同名称。 / File exists. Open it to edit or choose another name.",
+        ),
       );
       return;
     }
@@ -1557,7 +1654,7 @@ $("files").onclick = (e) => {
       );
     else download(name, file.text);
   }
-  if (el.dataset.delete && confirm("删除此文件？")) {
+  if (el.dataset.delete && confirm(mainText("删除此文件？"))) {
     if (busy) stop();
     delete files[el.dataset.delete];
     invalidateConversion();
@@ -1586,7 +1683,7 @@ $("file-upload").onchange = async () => {
       await persistFiles();
     }
   } catch (error: any) {
-    log("无法导入文件 / Import failed: " + error.message, "error");
+    log(mainText("无法导入文件 / Import failed: ") + error.message, "error");
     showTab("console");
   } finally {
     input.value = "";
@@ -1613,8 +1710,8 @@ $("diagnostics").onclick = (e) => {
 };
 function updateThemeButton() {
   const label = darkTheme
-    ? "切换到浅色模式 / Switch to light mode"
-    : "切换到暗色模式 / Switch to dark mode";
+    ? mainText("切换到浅色模式 / Switch to light mode")
+    : mainText("切换到暗色模式 / Switch to dark mode");
   $("theme").textContent = darkTheme ? "☀" : "◐";
   $("theme").title = label;
   $("theme").setAttribute("aria-label", label);
@@ -1641,7 +1738,7 @@ loadFiles()
   })
   .catch(() => {
     renderFiles();
-    log("IndexedDB 不可用，文件仅在内存中保存。", "warning");
+    log(mainText("IndexedDB 不可用，文件仅在内存中保存。"), "warning");
     $("storage-warning").hidden = false;
   })
   .finally(() => {
@@ -1679,7 +1776,7 @@ async function renameSymbol() {
   const word = editor.state.wordAt(editor.state.selection.main.head);
   if (!word) return;
   const name = editor.state.sliceDoc(word.from, word.to),
-    replacement = prompt("重命名 / Rename " + name, name);
+    replacement = prompt(mainText("重命名 / Rename ") + name, name);
   if (!replacement || replacement === name) return;
   try {
     const doc = editor.state.doc;
@@ -1719,7 +1816,7 @@ function renderOutline(items: { name: string; kind: string; line: number }[]) {
             `<button class="outline-entry" data-outline-line="${n.line}"><span>${escape(n.kind)}</span>${escape(n.name)}</button>`,
         )
         .join("")
-    : '<span class="empty">主程序 · 尚无子程序或自定义类型</span>';
+    : uiHTML('<span class="empty">主程序 · 尚无子程序或自定义类型</span>');
 }
 $("outline").onclick = (e) => {
   const element = (e.target as Element).closest<HTMLElement>(
@@ -1750,7 +1847,7 @@ $("files").ondrop = async (e) => {
     renderFiles();
     await persistFiles();
   } catch (error: any) {
-    log("无法导入文件 / Import failed: " + error.message, "error");
+    log(mainText("无法导入文件 / Import failed: ") + error.message, "error");
     showTab("console");
   }
 };
@@ -1762,11 +1859,13 @@ function persistEditorSource(source: string) {
     queueMicrotask(() => {
       if (examMode) examController?.sourceChanged();
     });
-    $("save-state").textContent = "考试答卷 · 独立保存";
+    $("save-state").textContent = mainText("考试答卷 · 独立保存");
     return;
   }
   const saved = settings.setItem("source", source);
-  $("save-state").textContent = saved ? "已保存本机" : "未保存 · 请下载";
+  $("save-state").textContent = saved
+    ? mainText("已保存本机")
+    : mainText("未保存 · 请下载");
   practiceController?.sourceChanged();
 }
 
@@ -1953,3 +2052,48 @@ $("practice-open").onclick = () => {
   showTab("practice");
   $("practice").scrollIntoView({ block: "nearest", behavior: "smooth" });
 };
+
+function refreshInterfaceLocale() {
+  $<HTMLSelectElement>("locale").value = getLocale();
+  document.title = tr(
+    "Pseudocode Ultra · Cambridge Pseudocode IDE",
+    "Pseudocode Ultra · CAIE 编程工作台",
+  );
+  const exampleSelect = $<HTMLSelectElement>("examples");
+  getExamples().forEach((example, index) => {
+    const option = exampleSelect.querySelector<HTMLOptionElement>(
+      `option[value="${index}"]`,
+    );
+    if (option) option.textContent = example.name;
+  });
+  updateThemeButton();
+  status(statusKey);
+  $("save-state").textContent = examMode
+    ? mainText("考试答卷 · 独立保存")
+    : mainText(settings.persistent ? "已保存本机" : "未保存 · 请下载");
+  renderRuntimeInfo();
+  renderAnalysisStatus();
+  renderReference();
+  syncExamControls();
+  renderFiles();
+  renderDiagnostics();
+  paintWatches();
+  if (lastEvent) renderState(lastEvent);
+  const hadTraceGrade = !!$("trace-grade").textContent;
+  refreshTab();
+  if (tab === "trace" && hadTraceGrade) $("grade-trace").click();
+  document
+    .querySelectorAll<HTMLElement>("[data-system-message]")
+    .forEach((row) => {
+      row.textContent = localizeMessage(row.dataset.systemMessage!);
+    });
+  worker?.postMessage({ type: "locale", locale: getLocale() });
+  analysisController.invalidate();
+  queryController.invalidate();
+  if (!examMode && !analysisPaused) {
+    void diagnose(editor.state.doc.toString());
+    forceLinting(editor);
+  }
+}
+onLocaleChange(refreshInterfaceLocale);
+refreshInterfaceLocale();

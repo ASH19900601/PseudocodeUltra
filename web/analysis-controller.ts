@@ -1,3 +1,5 @@
+import { getLocale, localizeMessage, tr } from "./i18n";
+
 // One live job per worker. Repeated lint callers share the same request, while
 // edits/cancel terminate synchronous analysis instead of queuing stale documents.
 export interface ServiceWorker {
@@ -29,7 +31,8 @@ export class WorkerRequestController {
     private onState: (state: AnalysisState) => void = () => {},
   ) {}
   request<T>(job: { source: string; [key: string]: unknown }): Promise<T> {
-    const { source, ...options } = job;
+    const locale = job.locale ?? getLocale();
+    const { source, ...options } = { ...job, locale };
     const key = JSON.stringify(options);
     if (this.active?.key === key && this.active.source === source)
       return this.active.promise;
@@ -49,13 +52,18 @@ export class WorkerRequestController {
       const active = this.active;
       if (!active || data.id !== active.id || this.worker !== worker) return;
       if (data.type === "progress") {
-        this.onState({ status: "running", phase: data.phase, startedAt });
+        this.onState({
+          status: "running",
+          phase: localizeMessage(data.phase),
+          startedAt,
+        });
         return;
       }
       this.active = undefined;
       if (data.error) {
-        this.onState({ status: "error", phase: data.error, startedAt });
-        reject(new Error(data.error));
+        const message = localizeMessage(data.error);
+        this.onState({ status: "error", phase: message, startedAt });
+        reject(new Error(message));
       } else {
         this.cached = { key, source, value: data };
         this.onState({ status: "complete", startedAt });
@@ -67,11 +75,22 @@ export class WorkerRequestController {
       this.active = undefined;
       this.worker = undefined;
       worker.terminate();
-      this.onState({ status: "error", phase: event.message, startedAt });
-      reject(new Error(event.message || "语言分析 Worker 失败，请重新分析。"));
+      const message = localizeMessage(
+        event.message ||
+          tr(
+            "Language analysis worker failed. Run analysis again.",
+            "语言分析 Worker 失败，请重新分析。",
+          ),
+      );
+      this.onState({ status: "error", phase: message, startedAt });
+      reject(new Error(message));
     };
-    this.onState({ status: "running", phase: "准备文档", startedAt });
-    worker.postMessage({ ...job, id });
+    this.onState({
+      status: "running",
+      phase: tr("Preparing document", "准备文档"),
+      startedAt,
+    });
+    worker.postMessage({ ...job, locale, id });
     return promise;
   }
   invalidate() {
@@ -81,7 +100,9 @@ export class WorkerRequestController {
     this.active = undefined;
     this.worker?.terminate();
     this.worker = undefined;
-    const error = new Error("语言分析已取消");
+    const error = new Error(
+      tr("Language analysis cancelled", "语言分析已取消"),
+    );
     error.name = "AbortError";
     reject(error);
   }

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,6 +9,8 @@
           "dark",
           localStorage.getItem("theme") === "dark",
         );
+        document.documentElement.lang =
+          localStorage.getItem("locale") === "zh-CN" ? "zh-CN" : "en";
       } catch {
         // Storage may be blocked; the default light theme remains usable.
       }
@@ -19,7 +21,7 @@
       }
     </style>
     <meta name="theme-color" content="#101a27" />
-    <title>Pseudocode Ultra · CAIE 编程工作台</title>
+    <title>Pseudocode Ultra · Cambridge Pseudocode IDE</title>
   </head>
   <body>
     <div id="app"></div>

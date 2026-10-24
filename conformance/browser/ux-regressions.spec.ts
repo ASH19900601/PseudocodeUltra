@@ -39,7 +39,8 @@ test("blocked storage leaves an editable runnable app with a visible backup warn
   await code(page, 'OUTPUT "session still works"');
   await expect(page.locator("#storage-warning")).toBeVisible();
   await page.locator("#run").click();
-  await expect(page.locator("#status")).toHaveText("执行完成");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.locator("#status")).toHaveText("Completed");
   await expect(page.locator("#console-output")).toContainText(
     "session still works",
   );

@@ -1,3 +1,6 @@
+import { getLocale, type Locale } from "../core/i18n";
+
+// The original catalog remains available to consumers with saved example names.
 export const examples = [
   {
     name: "01 · 循环与输入",
@@ -35,3 +38,27 @@ export const examples = [
     code: `CLASS Counter\n   PRIVATE Value : INTEGER\n   PUBLIC PROCEDURE NEW(Start : INTEGER)\n      Value ← Start\n   ENDPROCEDURE\n   PUBLIC FUNCTION Get() RETURNS INTEGER\n      RETURN Value\n   ENDFUNCTION\nENDCLASS\nCLASS Child INHERITS Counter\n   PUBLIC PROCEDURE NEW(Start : INTEGER)\n      SUPER.NEW(Start)\n   ENDPROCEDURE\nENDCLASS\nDECLARE Item : Child\nItem ← NEW Child(12)\nOUTPUT Item.Get()`,
   },
 ];
+
+const englishNames = [
+  "01 · Loops and input",
+  "02 · Arrays and search",
+  "03 · Records, dates and BYREF",
+  "04 · Text files",
+  "05 · Recursion",
+  "06 · Pointers and sets",
+  "07 · Classes and inheritance",
+];
+
+export function getExamples(locale: Locale = getLocale()) {
+  return examples.map((example, index) => ({
+    ...example,
+    name: locale === "zh-CN" ? example.name : englishNames[index],
+    code:
+      locale === "zh-CN"
+        ? example.code
+        : example.code.replace(
+            "// 求 1 至 N 的总和",
+            "// Sum the numbers from 1 to N",
+          ),
+  }));
+}
