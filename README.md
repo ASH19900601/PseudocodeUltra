@@ -8,6 +8,8 @@
 
 A browser-based pseudocode IDE for Cambridge Computer Science. Write and run code, inspect each execution step, practise with graded exercises, and work through timed exam sessions in one workspace.
 
+[Open Pseudocode Ultra](https://ash19900601.github.io/PseudocodeUltra/)
+
 ![Pseudocode Ultra workspace](docs/screenshot-en.png)
 
 ### Start locally
@@ -102,6 +104,8 @@ Language documents and runtime-policy details are listed in [Sources](docs/SOURC
 [English](#english) · [返回顶部](#pseudocode-ultra)
 
 面向 Cambridge 计算机科学课程的浏览器伪代码 IDE。在同一个工作区编写和运行代码、逐步观察执行过程、完成自动判分练习，并进行限时考试练习。
+
+[在线使用 Pseudocode Ultra](https://ash19900601.github.io/PseudocodeUltra/)
 
 ### 本地启动
 
