@@ -2,10 +2,16 @@ import { spawn } from "node:child_process";
 import { readdirSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 process.chdir(root);
-const output = join(root, "docs/validation");
+const noBuild = process.argv.includes("--no-build");
+const skipSpecs = process.argv.includes("--skip-specs");
+const outputArgument = process.argv.find((arg) => arg.startsWith("--output="));
+const output = resolve(
+  root,
+  outputArgument?.slice("--output=".length) || "docs/validation",
+);
 mkdirSync(output, { recursive: true });
 function files(dir) {
   return readdirSync(join(root, dir), { withFileTypes: true }).flatMap((e) =>
@@ -33,6 +39,7 @@ const summary = {
   timezone: "Asia/Shanghai",
   sourceSha256: digest.digest("hex"),
   node: process.version,
+  scope: noBuild ? "source-and-development-browser" : "full",
   checks: [],
   status: "running",
 };
@@ -80,17 +87,25 @@ function command(name, cmd, args, filename) {
           (row.tests ? " (" + row.passed + "/" + row.tests + ")" : ""),
       );
       if (code === 0) resolve(stdout);
-      else reject(new Error(name + " failed; see docs/validation/" + filename));
+      else reject(new Error(name + " failed; see " + join(output, filename)));
     });
   });
 }
 try {
-  await command(
-    "specifications",
-    "python",
-    ["scripts/fetch-specs.py"],
-    "specifications.log",
-  );
+  if (!skipSpecs)
+    await command(
+      "specifications",
+      "python",
+      ["scripts/fetch-specs.py"],
+      "specifications.log",
+    );
+  else
+    summary.checks.push({
+      name: "specifications",
+      status: "skipped",
+      reason:
+        "--skip-specs: external PDF retrieval was not verified in this run",
+    });
   const tests = (dir) =>
     readdirSync(dir)
       .filter((n) => n.endsWith(".test.ts"))
@@ -122,8 +137,8 @@ try {
   const browser = JSON.parse(
     await command(
       "browser",
-      "npx",
-      ["playwright", "test", "--reporter=json"],
+      process.execPath,
+      ["node_modules/@playwright/test/cli.js", "test", "--reporter=json"],
       "browser.json",
     ),
   );
@@ -136,7 +151,26 @@ try {
   });
   if (browser.stats.skipped || browser.stats.unexpected)
     throw new Error("Browser acceptance contains skipped or failed tests");
-  await command("build", "npm", ["run", "build"], "build.log");
+  await command(
+    "typecheck",
+    process.execPath,
+    ["node_modules/typescript/bin/tsc", "--noEmit"],
+    "typecheck.log",
+  );
+  if (!noBuild) {
+    await command(
+      "build",
+      process.execPath,
+      ["node_modules/vite/bin/vite.js", "build"],
+      "build.log",
+    );
+  } else {
+    summary.checks.push({
+      name: "build",
+      status: "skipped",
+      reason: "--no-build: no build requested",
+    });
+  }
   summary.performance = JSON.parse(
     await command(
       "performance",
@@ -145,42 +179,52 @@ try {
       "performance.json",
     ),
   );
-  const url = process.env.SMOKE_URL || "http://127.0.0.1:4173";
-  let reachable = false;
-  try {
-    reachable = (await fetch(url)).ok;
-  } catch {}
-  if (!reachable) {
-    ownedServer = spawn(
-      process.execPath,
-      [
-        "node_modules/vite/bin/vite.js",
-        "preview",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "4173",
-      ],
-      { cwd: root, env: process.env, stdio: "ignore" },
-    );
-    for (let i = 0; i < 100; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      try {
-        if ((await fetch(url)).ok) {
-          reachable = true;
-          break;
-        }
-      } catch {}
+  if (!noBuild) {
+    const url = process.env.SMOKE_URL || "http://127.0.0.1:4173";
+    let reachable = false;
+    try {
+      reachable = (await fetch(url)).ok;
+    } catch {}
+    if (!reachable) {
+      ownedServer = spawn(
+        process.execPath,
+        [
+          "node_modules/vite/bin/vite.js",
+          "preview",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "4173",
+        ],
+        { cwd: root, env: process.env, stdio: "ignore" },
+      );
+      for (let i = 0; i < 100; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        try {
+          if ((await fetch(url)).ok) {
+            reachable = true;
+            break;
+          }
+        } catch {}
+      }
+      if (!reachable) throw new Error("Production preview did not start");
     }
-    if (!reachable) throw new Error("Production preview did not start");
+    await command(
+      "production",
+      process.execPath,
+      ["scripts/smoke-production.mjs"],
+      "production.log",
+    );
+  } else {
+    summary.checks.push({
+      name: "production",
+      status: "skipped",
+      reason: "Requires a production build; --no-build selected",
+    });
   }
-  await command(
-    "production",
-    process.execPath,
-    ["scripts/smoke-production.mjs"],
-    "production.log",
-  );
-  summary.status = "passed";
+  summary.status = summary.checks.some((check) => check.status === "skipped")
+    ? "passed-with-skips"
+    : "passed";
   summary.finishedAt = new Date().toLocaleString("sv-SE", {
     timeZone: "Asia/Shanghai",
   });

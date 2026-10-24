@@ -45,6 +45,25 @@ input:focus-visible {
   outline: 2px solid #25a394;
   outline-offset: 2px;
 }
+textarea:focus-visible {
+  outline: 2px solid #25a394;
+  outline-offset: 2px;
+}
+.storage-warning {
+  background: #fff4d8;
+  color: #634600;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  line-height: 1.6;
+  border-radius: 6px;
+}
+.storage-warning[hidden] {
+  display: none;
+}
+.save-state {
+  font: 9px system-ui;
+  color: var(--muted);
+}
 button:disabled {
   opacity: 0.36;
   cursor: default;
@@ -174,7 +193,8 @@ footer i {
   display: inline-block;
 }
 .toolbar {
-  height: 68px;
+  min-height: 68px;
+  flex-wrap: wrap;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--surface);
@@ -244,6 +264,17 @@ main {
   padding: 0 7px;
   font-size: 11px;
   font-family: "JetBrains Mono", monospace;
+}
+#source-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+  font-size: inherit;
+}
+#run-mode {
+  font-size: 10px;
+  max-width: 105px;
 }
 .file-icon {
   color: var(--accent);
@@ -387,9 +418,8 @@ main {
   font-size: 10px;
   color: var(--accent);
   max-width: 145px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 .variable pre {
   white-space: pre-wrap;
@@ -425,6 +455,11 @@ main {
   margin-top: 10px;
   font-size: 10px;
 }
+.watch code,
+.watch span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .watch span {
   margin-left: auto;
 }
@@ -445,11 +480,31 @@ main {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.virtual-file button:first-child {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+}
+.virtual-file button:not(:first-child) {
+  flex-shrink: 0;
+  padding: 5px;
+}
 #add-file,
 #import-file {
   font-size: 10px;
   margin-top: 13px;
   padding: 5px 7px;
+}
+#backup-files {
+  font-size: 10px;
+  margin-top: 8px;
+  padding: 5px 7px;
+}
+#file-record-note {
+  font-size: 11px;
+  margin: 8px 0;
+  line-height: 1.6;
 }
 .policy-note {
   margin: 18px;
@@ -818,6 +873,16 @@ dialog textarea {
   .tabs button {
     font-size: 10px;
   }
+  .tabs {
+    height: auto;
+    min-height: 43px;
+    flex-wrap: wrap;
+    overflow-x: visible;
+    padding: 3px 5px;
+  }
+  .tabs button {
+    min-height: 34px;
+  }
   .tabs button span {
     display: none;
   }
@@ -839,6 +904,36 @@ dialog textarea {
   }
   .cm-editor {
     font-size: 11px;
+  }
+}
+@media (max-width: 500px) {
+  .inspector {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .inspector > .panel-heading,
+  .policy-note {
+    grid-column: 1;
+  }
+  .editor-panel > .panel-heading {
+    padding: 0 7px;
+    gap: 5px;
+  }
+  .file-tab {
+    min-width: 0;
+    gap: 5px;
+    padding: 0;
+  }
+  .file-tab .save-state {
+    display: none;
+  }
+  .panel-heading select {
+    max-width: 135px;
+  }
+  footer {
+    height: auto;
+    min-height: 40px;
+    flex-wrap: wrap;
+    padding: 8px 0;
   }
 }
 .variable-children {

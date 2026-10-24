@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-24",
+  "environment": "Windows / actual Edge / development server",
+  "scenario": "Paste a 100000-line scalar program in a single editor input, then edit its last expression",
+  "status": "incomplete-unresponsive",
+  "completed": false,
+  "timingMs": null,
+  "observation": "The single large paste did not return within the observation window and the browser test was stopped. No completed UI latency can be reported. The 13.49 ms core incremental benchmark must not be presented as editor end-to-end latency.",
+  "followUp": "Profile large-paste editor layout, lint scheduling and memory usage separately; this workload has not met a usable end-to-end acceptance criterion."
+}

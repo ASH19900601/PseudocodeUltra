@@ -1,7 +1,7 @@
 import { userSignatures } from "./language";
 import { profile, type Diagnostic, type DialectId } from "./dialects";
 import { analyze } from "./semantic";
-import { lex } from "./lexer";
+import { lex, normalize } from "./lexer";
 import type { Node, Program } from "./parser";
 export interface TextChange {
   from: number;
@@ -59,6 +59,8 @@ export class LanguageService {
       const unit = this.lineNodes.get(changed + 1);
       if (
         count === 1 &&
+        normalize(rows[changed]) === rows[changed] &&
+        !this.diagnostics.some((d) => d.code === "NORMALIZED") &&
         unit &&
         unit.line === unit.endLine &&
         ![
@@ -110,6 +112,8 @@ export class LanguageService {
             .slice(0, changed)
             .reduce((n, s) => n + s.length + 1, 0),
           delta = rows[changed].length - this.rows[changed].length;
+        const oldRowEnd = rowStart + this.rows[changed].length;
+        const shift = (at: number) => (at >= oldRowEnd ? at + delta : at);
         const changedDiagnostics = p.diagnostics
           .filter((d) => d.line > offset)
           .map((d) => ({
@@ -136,15 +140,23 @@ export class LanguageService {
         this.diagnostics = [
           ...this.diagnostics
             .filter((d) => d.line !== changed + 1)
-            .map((d) =>
-              d.line > changed + 1
+            .map((d) => ({
+              ...d,
+              ...(d.line > changed + 1
                 ? {
-                    ...d,
                     from: d.from !== undefined ? d.from + delta : undefined,
                     to: d.to !== undefined ? d.to + delta : undefined,
                   }
-                : d,
-            ),
+                : {}),
+              actions: d.actions?.map((a) => ({
+                ...a,
+                edits: a.edits.map((e) => ({
+                  ...e,
+                  from: shift(e.from),
+                  to: shift(e.to),
+                })),
+              })),
+            })),
           ...changedDiagnostics,
         ];
         this.source = source;
@@ -178,6 +190,15 @@ export class LanguageService {
         ].includes(node.kind)
       )
         this.definitions.set(node.name.toUpperCase(), text);
+      if (node.kind === "type" && node.definition?.startsWith("("))
+        for (const name of node.definition.slice(1, -1).split(","))
+          this.definitions.set(name.trim().toUpperCase(), text);
+      if (
+        node.kind === "assign" &&
+        node.target.kind === "name" &&
+        node.value.kind === "new"
+      )
+        this.definitions.set(node.target.name.toUpperCase(), text);
     }
     return { diagnostics: this.diagnostics, incremental: false };
   }

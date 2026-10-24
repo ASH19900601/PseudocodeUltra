@@ -1,5 +1,7 @@
 # M1–M4 最终工程验收
 
+> 以下是初始提交 `3d9bd86` 的历史验收记录。后续本机修复、269 项回归及未完成的规范/发布验证见 [2026-10-24 本机实测报告](LOCAL_REVIEW_2026-10-24.md)，不能用此处原始源码摘要和测试计数代表修改后的代码。
+
 **结论：M1–M4 阶段功能已实现，本次完整工程验收通过。** 日期：2026-10-24（Asia/Shanghai）。原始方案见 [PROJECT_PLAN.md](PROJECT_PLAN.md)。M5 未列入本次范围。
 
 最终记录为 [summary.json](validation/summary.json)，完成于 13:36:15。受测源码 SHA-256：`8b31499c126a9def27e0952999fe50eb760f4f1ff4358500c0c7ed54e84a1edf`。摘要包括 core、web、conformance、scripts、依赖声明与锁文件、TS/Playwright 配置、规范来源清单；不包括 Markdown 报告、截图和生成的验收记录。

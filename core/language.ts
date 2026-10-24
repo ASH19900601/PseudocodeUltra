@@ -749,18 +749,19 @@ export function signatureHelp(
       return undefined;
     }
   }
-  const stack: { name: string; index: number }[] = [];
+  const stack: { name: string; index: number; close: string }[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
-    if (t.kind === "symbol" && t.text === "(")
+    if (t.kind === "symbol" && ["(", "["].includes(t.text))
       stack.push({
         name:
-          tokens[i - 1]?.kind === "name"
+          t.text === "(" && tokens[i - 1]?.kind === "name"
             ? tokens[i - 1].text.toUpperCase()
             : "",
         index: 0,
+        close: t.text === "(" ? ")" : "]",
       });
-    else if (t.kind === "symbol" && t.text === ")") stack.pop();
+    else if (t.kind === "symbol" && t.text === stack.at(-1)?.close) stack.pop();
     else if (t.kind === "symbol" && t.text === "," && stack.length)
       stack.at(-1)!.index++;
   }

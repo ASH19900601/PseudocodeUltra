@@ -201,6 +201,8 @@ export function analyze(source: string, p: Profile): Program {
     asProcedure = false,
     lvalue = false,
   ): string {
+    if (lvalue && !["name", "index", "member", "deref"].includes(e.kind))
+      add("LVALUE", "需要可赋值变量 / Assignable variable required", e);
     switch (e.kind) {
       case "literal":
         if (!p.types.includes(e.type))
@@ -283,8 +285,6 @@ export function analyze(source: string, p: Profile): Program {
         if (e.op === "^") {
           if (!p.advanced)
             add("DIALECT_FEATURE", "指针仅 A2 可用 / A2 pointer feature", e);
-          if (!["name", "index", "member", "deref"].includes(e.right.kind))
-            add("LVALUE", "取地址需要变量 / Address requires variable", e);
           return "^" + t;
         }
         if (e.op === "NOT") {
@@ -481,8 +481,6 @@ export function analyze(source: string, p: Profile): Program {
       if (!p) return;
       const expected = canonical(p.type);
       if (p.mode === "BYREF") {
-        if (!["name", "index", "member", "deref"].includes(arg.kind))
-          add("LVALUE", "BYREF 需要变量 / BYREF requires variable", arg);
         if (
           t !== expected &&
           t !== "UNKNOWN" &&
@@ -501,6 +499,7 @@ export function analyze(source: string, p: Profile): Program {
     return nodes.some(
       (n) =>
         n.kind === "return" ||
+        (n.kind === "repeat" && returns(n.body)) ||
         (n.kind === "if" && returns(n.body) && returns(n.other)) ||
         (n.kind === "case" &&
           n.branches.some((b: any) => b.otherwise) &&
@@ -513,8 +512,18 @@ export function analyze(source: string, p: Profile): Program {
     local = new Set<string>(
       (env.module?.params || []).map((p: any) => canonical(p.name)),
     ),
+    allowDefinitions = false,
   ) => {
     for (const n of nodes) {
+      if (
+        !allowDefinitions &&
+        ["class", "type", "function", "procedure"].includes(n.kind)
+      )
+        add(
+          "MODULE_POSITION",
+          "定义不能嵌套在语句或子程序内 / Nested definitions are not supported",
+          n,
+        );
       if (n.kind === "declare")
         for (const name of n.names) {
           identifier(name, n);
@@ -539,6 +548,8 @@ export function analyze(source: string, p: Profile): Program {
       if (!["class", "type", "function", "procedure"].includes(n.kind)) {
         if (n.body) validateDeclarations(n.body, env, local);
         if (n.other) validateDeclarations(n.other, env, local);
+        for (const b of n.branches || [])
+          validateDeclarations(b.body, env, local);
       }
     }
   };
@@ -639,6 +650,12 @@ export function analyze(source: string, p: Profile): Program {
           break;
         }
         case "for": {
+          if (env.symbols.get(canonical(n.name))?.constant)
+            add(
+              "CONSTANT",
+              "FOR 不能修改常量 / Loop variable cannot be constant",
+              n,
+            );
           if (env.symbols.get(canonical(n.name))?.type !== "INTEGER")
             add(
               "FOR_TYPE",
@@ -662,6 +679,12 @@ export function analyze(source: string, p: Profile): Program {
             ranges: { lo: any; hi: any }[] = [];
           for (const b of n.branches) {
             for (const r of b.ranges) {
+              if (r.length > 2)
+                add(
+                  "CASE_RANGE",
+                  "CASE 范围需要一个或两个端点 / CASE ranges require one or two endpoints",
+                  b.line,
+                );
               for (const e of r) {
                 const t = expression(e, env);
                 if (!compatible(type, t) && !compatible(t, type))
@@ -674,6 +697,12 @@ export function analyze(source: string, p: Profile): Program {
               if (r.every((e: Expr) => e.kind === "literal")) {
                 const lo = r[0].value,
                   hi = r.at(-1).value;
+                if (lo > hi)
+                  add(
+                    "CASE_RANGE",
+                    "CASE 范围上界小于下界 / CASE range bounds are reversed",
+                    b.line,
+                  );
                 if (ranges.some((x) => lo <= x.hi && hi >= x.lo))
                   add(
                     "CASE_OVERLAP",
@@ -765,11 +794,52 @@ export function analyze(source: string, p: Profile): Program {
         );
     } else hasMain = true;
   }
+  const enumValues = new Set<string>();
   for (const t of model.types.values()) {
     knownType(t.name, t);
+    if (t.kind === "type" && !t.definition) {
+      const fields = new Set<string>();
+      for (const f of t.body || [])
+        if (f.kind === "declare")
+          for (const name of f.names) {
+            identifier(name, f);
+            if (fields.has(canonical(name)))
+              add(
+                "DUPLICATE",
+                "重复记录字段 / Duplicate record field " + name,
+                f,
+              );
+            fields.add(canonical(name));
+          }
+    }
+    if (t.definition?.startsWith("(")) {
+      const values = new Set<string>();
+      for (const name of t.definition.slice(1, -1).split(",")) {
+        identifier(name.trim(), t);
+        const key = canonical(name);
+        if (
+          values.has(key) ||
+          enumValues.has(key) ||
+          names.has(key) ||
+          model.global.symbols.has(key)
+        )
+          add(
+            "DUPLICATE",
+            "重复或冲突的枚举成员 / Duplicate or conflicting enum member " +
+              name.trim(),
+            t,
+          );
+        values.add(key);
+        enumValues.add(key);
+      }
+    }
     if (t.kind === "class") {
-      if (t.base && !model.types.get(canonical(t.base)))
-        add("CLASS", "未知父类 / Unknown superclass", t);
+      if (t.base && model.types.get(canonical(t.base))?.kind !== "class")
+        add(
+          "CLASS",
+          "父类必须是已声明的 CLASS / Superclass must be a declared class",
+          t,
+        );
       let fields: ReturnType<Model["fields"]> = [];
       try {
         fields = model.fields(t.name);
@@ -855,7 +925,7 @@ export function analyze(source: string, p: Profile): Program {
     validateDeclarations(n.body, env);
     walk(n.body, env);
   }
-  validateDeclarations(program.body, model.global);
+  validateDeclarations(program.body, model.global, new Set(), true);
   walk(program.body, model.global);
   if (p.styleChecks) {
     const formatted = format(source, p.id).split("\n");

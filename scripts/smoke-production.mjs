@@ -1,13 +1,30 @@
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 const base = process.env.SMOKE_URL || "http://127.0.0.1:4173";
 const response = await fetch(base);
 assert.equal(response.status, 200);
 assert.match(await response.text(), /Pseudocode Ultra/);
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
+  executablePath:
+    process.env.CHROMIUM_PATH ||
+    (process.platform === "win32"
+      ? [
+          join(
+            process.env["ProgramFiles(x86)"] || "C:/Program Files (x86)",
+            "Microsoft/Edge/Application/msedge.exe",
+          ),
+          join(
+            process.env.ProgramFiles || "C:/Program Files",
+            "Google/Chrome/Application/chrome.exe",
+          ),
+        ].find(existsSync)
+      : existsSync("/usr/bin/chromium")
+        ? "/usr/bin/chromium"
+        : undefined),
   headless: true,
-  args: ["--no-sandbox"],
+  args: process.platform === "linux" ? ["--no-sandbox"] : [],
 });
 try {
   const page = await browser.newPage({

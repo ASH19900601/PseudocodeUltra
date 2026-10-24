@@ -23,6 +23,7 @@ export function traceRows(
       : allColumns;
   let previous: Record<string, any> = {},
     rows: TraceRow[] = [];
+  let previousVisible: Record<string, any> = {};
   let pending: TraceRow | undefined,
     lastColumn = -1;
   for (const event of points) {
@@ -60,7 +61,7 @@ export function traceRows(
       const visible = Object.fromEntries(
         columns.map((c) => [
           c,
-          options.hideRepeated && vars[c] === previous[c]
+          options.hideRepeated && vars[c] === previousVisible[c]
             ? ""
             : String(vars[c] ?? ""),
         ]),
@@ -70,6 +71,7 @@ export function traceRows(
         stack: event.stack?.join(" → ") || "",
         variables: visible,
       });
+      previousVisible = { ...vars };
     }
     previous = { ...vars };
   }

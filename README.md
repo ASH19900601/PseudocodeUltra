@@ -1,5 +1,7 @@
 # Pseudocode Ultra
 
+2026-10-24 本机复核与 45 类问题修复见 [本机实测报告](docs/LOCAL_REVIEW_2026-10-24.md)：269 项测试通过；完整初版中的考试、题库、教师与桌面模块仍未全部实现。此次没有重新构建发布产物，官方 PDF 下载复核也未完成，范围与下述初始工程验收不同。
+
 浏览器本地运行的 CAIE 伪代码 IDE。M1–M4 已实现并通过工程验收：0478 / 2210、9618-AS、9618-A2、调试与教学工具，以及 Python / Java / VB.NET 独立源码转换。
 
 TypeScript + CodeMirror 6 + Web Workers，无后台服务、账户或 API key。完整记录见 [验收报告](docs/ACCEPTANCE.md)、[机器验收结果](docs/validation/summary.json) 和 [规范来源](docs/SOURCES.md)。
@@ -59,7 +61,9 @@ npm run benchmark        # 1000 万次循环、10 万行增量诊断
 npm run specs:verify     # 官方资料下载与散列校验
 ```
 
-原生测试还需要 Python 3、Java 17+ 和 .NET SDK 8。工具链脚本将 ECJ 3.40 与 .NET 8.0.100 安装到 `/workspace/.tools`，保留 TLS 验证并检查上游校验值，不修改系统目录。可用 `PSEUDO_TOOLS_DIR` 更改安装位置，并设置 `ECJ_JAR` / `DOTNET_BIN`。浏览器默认 `/usr/bin/chromium`，可用 `CHROMIUM_PATH` 覆盖。官方 PDF 缓存在 `/workspace/.cache/pseudo-specs`，不随仓库重新分发。
+原生测试还需要 Python 3、Java 17+ 和 .NET SDK 8。`npm run setup:toolchains` 在 Windows 将 Java 21 JRE、ECJ 3.40 和 .NET 8 SDK 安装到项目 `.tools/`；Linux 保留 `/workspace/.tools` 路径。下载保留 TLS 验证并检查上游校验值，不修改系统目录。可用 `PSEUDO_TOOLS_DIR` 更改安装位置，并设置 `PYTHON_BIN` / `JAVA_BIN` / `ECJ_JAR` / `DOTNET_BIN`。浏览器自动选择本机 Edge/Chrome、系统 Chromium 或 Playwright Chromium，可用 `CHROMIUM_PATH` 覆盖。官方 PDF 默认缓存在项目 `.cache/pseudo-specs`，可用 `PSEUDO_SPEC_CACHE` 覆盖，不随仓库重新分发。
+
+仅检查源码与开发服务器、明确跳过构建时，可使用 `node scripts/acceptance.mjs --no-build --output=docs/review/validation`。若明确追加 `--skip-specs`，结果会记录资料未复核，总状态为 `passed-with-skips`，不等于完整发布验收。
 
 性能基准测量预热后的高速运行，以及完成冷分析后的一次非结构性编辑。冷启动、结构性修改、开启完整追踪的运行不在这两个阈值内。资源上限与精确测试范围见验收报告。
 

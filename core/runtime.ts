@@ -134,6 +134,23 @@ function valueSet(values: Iterable<any>) {
     if (![...set].some((v) => sameValue(v, value))) set.add(value);
   return set;
 }
+function decimalText(value: number): string {
+  const text = String(value);
+  if (!/[eE]/.test(text)) return text;
+  const sign = value < 0 ? "-" : "";
+  const [coefficient, exponent] = Math.abs(value).toString().split("e");
+  const [whole, fraction = ""] = coefficient.split(".");
+  const digits = whole + fraction,
+    point = whole.length + Number(exponent);
+  return (
+    sign +
+    (point <= 0
+      ? "0." + "0".repeat(-point) + digits
+      : point >= digits.length
+        ? digits + "0".repeat(point - digits.length)
+        : digits.slice(0, point) + "." + digits.slice(point))
+  );
+}
 function clone(v: any): any {
   if (v?.tag === "object" && v.class) return v;
   if (v?.tag === "pointer") return { ...v };
@@ -207,6 +224,7 @@ export class Machine {
   seed: number;
   generator: G;
   warnings: string[] = [];
+  declarations = new WeakMap<Scope, Map<string, Node>>();
   constructor(
     source: string,
     id: DialectId = "0478",
@@ -226,8 +244,11 @@ export class Machine {
       hydrate(structuredClone(options.files || {})),
     );
     if (this.policies.filenameCase === "insensitive")
-      this.files = Object.fromEntries(
-        Object.entries(this.files).map(([k, v]) => [k.toLowerCase(), v]),
+      this.files = Object.assign(
+        Object.create(null),
+        Object.fromEntries(
+          Object.entries(this.files).map(([k, v]) => [k.toLowerCase(), v]),
+        ),
       );
     this.seed = options.seed ?? 123456789;
     this.register(this.program.body);
@@ -248,6 +269,20 @@ export class Machine {
       }
       if (["type", "class"].includes(n.kind))
         this.types.set(n.name.toUpperCase(), n);
+    }
+  }
+  declare(s: Scope, name: string, value: Cell, node: Node) {
+    let definitions = this.declarations.get(s);
+    if (!definitions) this.declarations.set(s, (definitions = new Map()));
+    const key = name.toUpperCase();
+    // The same declaration can execute again inside a loop. A distinct source
+    // declaration with the same name must still report a duplicate.
+    if (definitions.get(key) === node) s.vars.set(key, value);
+    else {
+      if (s.vars.has(key))
+        this.fail("DUPLICATE", `重复声明 / Duplicate identifier ${name}`);
+      s.add(name, value);
+      definitions.set(key, node);
     }
   }
   snapshot(s: Scope) {
@@ -565,7 +600,7 @@ export class Machine {
           const owner = this.stack.at(-1)?.split(".")[0];
           const base = owner && this.types.get(owner)?.base;
           if (!base) this.fail("SUPER", "没有父类 / No superclass");
-          return { ...self, superClass: base.toUpperCase() };
+          return self;
         }
         const d = [...this.types.values()].find(
           (t) =>
@@ -764,7 +799,13 @@ export class Machine {
           if (obj?.tag !== "object")
             this.fail("CALL", "方法需要对象 / Method requires object");
           let className = obj.name;
-          if (obj.superClass) className = obj.superClass;
+          if (
+            e.target.target.kind === "name" &&
+            e.target.target.name.toUpperCase() === "SUPER"
+          ) {
+            const owner = this.stack.at(-1)?.split(".")[0];
+            className = this.types.get(owner!)!.base;
+          }
           const fn = this.method(className, e.target.name);
           if (!fn)
             this.fail("CALL", `未知方法 / Unknown method ${e.target.name}`);
@@ -1107,15 +1148,17 @@ export class Machine {
           ? str(0).toUpperCase()
           : str(0).toLowerCase();
       case "NUM_TO_STR":
-        return String(num(0));
+        return decimalText(num(0));
       case "STR_TO_NUM": {
         const s = str(0);
-        if (!/^[+-]?\d+(\.\d+)?$/.test(s))
+        if (!/^[+-]?\d+(\.\d+)?$/.test(s) || !Number.isFinite(Number(s)))
           this.fail("BUILTIN_VALUE", "无法转换为数字 / Invalid number");
         return Number(s);
       }
       case "IS_NUM":
-        return /^[+-]?\d+(\.\d+)?$/.test(str(0));
+        return (
+          /^[+-]?\d+(\.\d+)?$/.test(str(0)) && Number.isFinite(Number(a[0]))
+        );
       case "ASC":
         this.check("CHAR", a[0]);
         if (a[0].codePointAt(0) > 127)
@@ -1278,9 +1321,11 @@ export class Machine {
           steps: this.steps,
           limit: this.options.maxSteps ?? 100000,
           line: n.line,
+          column: n.span?.column || 1,
           lookup: (name: string) => s.find(name),
           fail: (code: string, message: string): never => {
             this.line = context.line;
+            this.column = context.column;
             this.steps = context.steps;
             return this.fail(code, message);
           },
@@ -1300,16 +1345,26 @@ export class Machine {
               !/^[A-Za-z][A-Za-z0-9_]*$/.test(name)
             )
               this.fail("IDENTIFIER", "无效标识符 / Invalid identifier");
-            s.add(name, { type: n.type, value: this.typeDefault(n.type, s) });
+            this.declare(
+              s,
+              name,
+              { type: n.type, value: this.typeDefault(n.type, s) },
+              n,
+            );
           }
           break;
         case "constant": {
           const v = yield* this.eval(n.value, s);
-          s.add(n.name, {
-            type: this.infer(n.value, s),
-            value: v,
-            constant: true,
-          });
+          this.declare(
+            s,
+            n.name,
+            {
+              type: this.infer(n.value, s),
+              value: v,
+              constant: true,
+            },
+            n,
+          );
           break;
         }
         case "type":
@@ -1430,27 +1485,26 @@ export class Machine {
               "FOR 变量必须为 INTEGER / Integer loop variable required",
             );
           const from = yield* this.eval(n.from, s),
-            to = yield* this.eval(n.to, s),
+            to =
+              this.policies.forBounds === "once"
+                ? yield* this.eval(n.to, s)
+                : undefined,
             step = yield* this.eval(n.step, s);
-          for (const v of [from, to, step]) this.check("INTEGER", v);
+          for (const v of [from, step]) this.check("INTEGER", v);
           if (step === 0)
             this.fail("FOR_STEP", "STEP 不能为 0 / STEP cannot be zero");
-          for (
-            this.put(c, from);
-            step > 0
-              ? c.value <=
-                (this.policies.forBounds === "once"
-                  ? to
-                  : yield* this.eval(n.to, s))
-              : c.value >=
-                (this.policies.forBounds === "once"
-                  ? to
-                  : yield* this.eval(n.to, s));
-            this.put(c, c.value + step)
-          ) {
+          this.put(c, from);
+          while (true) {
+            const bound =
+              this.policies.forBounds === "once"
+                ? to
+                : yield* this.eval(n.to, s);
+            this.check("INTEGER", bound);
+            if (step > 0 ? c.value > bound : c.value < bound) break;
             yield* this.block(n.body, s);
             yield* this.observe(n, s, "loop");
             yield* this.tick(n, s);
+            this.put(c, c.value + step);
           }
           break;
         }
@@ -1533,7 +1587,9 @@ export class Machine {
         case "writefile": {
           const name = this.filename(yield* this.eval(n.file, s));
           this.file(name, "WRITE|APPEND");
-          this.files[name].text += display(yield* this.eval(n.value, s)) + "\n";
+          this.files[name].text +=
+            this.render(yield* this.eval(n.value, s), this.infer(n.value, s)) +
+            "\n";
           break;
         }
         case "seek": {
@@ -1570,7 +1626,12 @@ export class Machine {
         }
         case "define": {
           if (n.type)
-            s.add(n.name, { type: n.type, value: this.typeDefault(n.type, s) });
+            this.declare(
+              s,
+              n.name,
+              { type: n.type, value: this.typeDefault(n.type, s) },
+              n,
+            );
           const c = s.find(n.name);
           if (!c || !(c.value instanceof Set))
             this.fail("SET", "DEFINE 需要集合 / Set required");

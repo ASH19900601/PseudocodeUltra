@@ -58,21 +58,50 @@ import {
   gradeTrace,
   type TraceOptions,
 } from "../core/trace";
-import { defaultPolicies, type RuntimePolicies } from "../core/policies";
 import { printSource } from "./print";
 import { parse } from "../core/parser";
 import { format, traceCSV, flowchart } from "../core/tools";
 import type { Target } from "../core/transpile";
 import type { Event, VirtualFile } from "../core/runtime";
-import { loadFiles, saveFiles } from "./storage";
+import {
+  loadFiles,
+  saveFiles,
+  createSettings,
+  settingChoice,
+  settingInteger,
+  storedPolicies,
+  exportFiles,
+  importFiles,
+} from "./storage";
 import { examples } from "./examples";
 import "./style.css";
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
-let language: DialectId =
-  (localStorage.getItem("dialect") as DialectId) || "0478";
-if (!["0478", "2210", "9618-AS", "9618-A2"].includes(language))
-  language = "0478";
+const settings = createSettings(undefined, () =>
+  queueMicrotask(() => {
+    $("storage-warning").hidden = false;
+    $("save-state").textContent = "未保存 · 请下载";
+  }),
+);
+let language: DialectId = settingChoice(
+  settings.getItem("dialect"),
+  ["0478", "2210", "9618-AS", "9618-A2"],
+  "0478",
+);
+let filesReady = false;
+let sourceName = settings.getItem("sourceName") || "main.pseudo";
+let runMode = settingChoice(
+  settings.getItem("runMode"),
+  ["manual", "change", "blur"],
+  "manual",
+);
+let autoRunTimer: ReturnType<typeof setTimeout> | undefined;
+let converted = "";
+const watches = new Set<string>();
+const watchValues = new Map<string, string>();
+const attempts: Record<string, string> = {};
+const tracePageSize = 200;
+let tracePage = 0;
 let worker: Worker | undefined,
   busy = false,
   paused = false,
@@ -82,26 +111,33 @@ let worker: Worker | undefined,
   activeLine = 0,
   lastEvent: Event | undefined,
   tab = "console";
-let guideVersion: "2026" | "2027–2029" =
-  (localStorage.getItem("guideVersion") as any) || "2026";
-let strictness: "exam" | "learning" | "lenient" =
-  (localStorage.getItem("strictness") as any) || "exam";
+let guideVersion = settingChoice(
+  settings.getItem("guideVersion"),
+  ["2026", "2027–2029"],
+  "2026",
+);
+let strictness = settingChoice(
+  settings.getItem("strictness"),
+  ["exam", "learning", "lenient"],
+  "exam",
+);
 let fastBusy = false;
 const currentProfile = () =>
   profile(language, {
     guideVersion,
     strictness,
-    styleChecks: localStorage.getItem("styleChecks") === "true",
-    logicalPrecedence: (localStorage.getItem("logicalPrecedence") ||
-      "standard") as "standard" | "leftToRight",
+    styleChecks: settings.getItem("styleChecks") === "true",
+    logicalPrecedence: settingChoice(
+      settings.getItem("logicalPrecedence"),
+      ["standard", "leftToRight"] as const,
+      "standard",
+    ),
   });
-let policyState: RuntimePolicies = { ...defaultPolicies };
-try {
-  policyState = {
-    ...policyState,
-    ...JSON.parse(localStorage.getItem("policies") || "{}"),
-  };
-} catch {}
+let policyState = storedPolicies(settings.getItem("policies"));
+const maxSteps = () =>
+  settingInteger(settings.getItem("maxSteps"), 100000, 1, 1000000000);
+const randomSeed = () =>
+  settingInteger(settings.getItem("seed"), 42, 0, 4294967295);
 let userSignatureList: UserSignature[] = [];
 let continuationLines = new Set<number>();
 const numberConfig = new Compartment();
@@ -110,9 +146,12 @@ const analysisWorker = new Worker(
   { type: "module" },
 );
 let requestId = 0;
+let analysisWorkerError: Error | undefined;
 const analysisRequests = new Map<
   number,
   {
+    source: string;
+    profileKey: string;
     resolve: (d: ReturnType<typeof analyze>["diagnostics"]) => void;
     reject: (e: Error) => void;
   }
@@ -121,9 +160,13 @@ analysisWorker.onmessage = ({ data }) => {
   const request = analysisRequests.get(data.id);
   if (request) {
     analysisRequests.delete(data.id);
-    if (data.signatures) userSignatureList = data.signatures;
-    data.outline && renderOutline(data.outline);
+    const current =
+      request.source === editor.state.doc.toString() &&
+      request.profileKey === analysisProfileKey();
+    if (current && data.signatures) userSignatureList = data.signatures;
+    if (current && data.outline) renderOutline(data.outline);
     if (
+      current &&
       data.continuations &&
       (data.continuations.length !== continuationLines.size ||
         data.continuations.some((line: number) => !continuationLines.has(line)))
@@ -142,11 +185,27 @@ analysisWorker.onmessage = ({ data }) => {
       : request.resolve(data.diagnostics);
   }
 };
+analysisWorker.onerror = (event) => {
+  analysisWorkerError = new Error(
+    event.message ||
+      "语言分析失败，请刷新页面 / Language analysis failed; reload the page",
+  );
+  for (const request of analysisRequests.values())
+    request.reject(analysisWorkerError);
+  analysisRequests.clear();
+};
+const analysisProfileKey = () => JSON.stringify(currentProfile());
 function analyzeAsync(source: string) {
+  if (analysisWorkerError) return Promise.reject(analysisWorkerError);
   return new Promise<ReturnType<typeof analyze>["diagnostics"]>(
     (resolve, reject) => {
       const id = ++requestId;
-      analysisRequests.set(id, { resolve, reject });
+      analysisRequests.set(id, {
+        source,
+        profileKey: analysisProfileKey(),
+        resolve,
+        reject,
+      });
       analysisWorker.postMessage({
         id,
         source,
@@ -170,7 +229,7 @@ const escape = (s: any) =>
       ]!,
   );
 $("app").innerHTML =
-  `<aside class="rail"><a class="brand" href="#" aria-label="Pseudocode Ultra">P<span>u</span></a><button id="workspace-nav" class="rail-active" title="Workspace">⌘</button><button id="examples-nav" title="Examples">▤</button><button id="help-nav" title="Language reference">?</button><div class="rail-bottom">CAIE</div></aside><div class="shell"><header><div><span class="eyebrow">COMPUTER SCIENCE LAB</span><h1>Pseudocode <em>Ultra</em></h1></div><div class="header-right"><span class="local-dot"></span>本地执行 · Local-first <button id="theme" title="Switch theme">◐</button></div></header><section class="toolbar"><div class="select-wrap"><label for="dialect">考试方言 / DIALECT</label><select id="dialect"><option>0478</option><option>2210</option><option>9618-AS</option><option>9618-A2</option></select></div><span class="divider"></span><button id="run" class="primary">▶ 运行 <kbd>Ctrl ↵</kbd></button><label class="fast-toggle" title="高速执行不生成追踪表，调试请关闭"><input id="fast-mode" type="checkbox">高速</label><button id="pause" disabled>Ⅱ 暂停</button><button id="step">↳ 单步</button><button id="over" disabled>↷ 跳过</button><button id="out" disabled>↑ 跳出</button><button id="stop" disabled>■ 停止</button><span class="toolbar-space"></span><button id="format">格式化</button><button id="print-pdf">PDF</button><button id="download">↓ 保存</button><button id="upload">↑ 打开</button><input id="source-upload" type="file" accept=".txt,.pseudo,.psc" hidden></section><main><section class="editor-panel panel"><div class="panel-heading"><div class="file-tab"><span class="file-icon">⌁</span> main.pseudo <span class="unsaved">●</span></div><select id="examples" aria-label="Load example"><option value="">示例程序 / Examples</option>${examples.map((e, i) => `<option value="${i}">${e.name}</option>`).join("")}</select></div><div id="editor"></div><div id="signature-help" hidden></div><div class="editor-footer"><span id="cursor">Ln 1, Col 1</span><span>UTF-8 <span id="indent">4 spaces</span><button id="clear-breakpoints">清除断点</button></span></div></section><aside class="inspector panel"><div class="panel-heading"><h2>调试工作台 <small>DEBUGGER</small></h2><span id="status" class="status">就绪</span></div><div class="debug-section"><h3>变量 <small>VARIABLES</small></h3><div id="variables" class="empty">运行或单步执行后查看变量</div></div><div class="debug-section"><h3>监视表达式 <small>WATCH</small></h3><form id="watch-form"><input id="watch-input" placeholder="变量名称，例如 Total" aria-label="Watch variable"><button>＋</button></form><div id="watches"></div></div><div class="debug-section"><h3>调用栈 <small>CALL STACK</small></h3><div id="stack" class="empty">尚未进入子程序</div></div><div class="debug-section"><h3>虚拟文件 <small>FILES · IndexedDB</small></h3><div id="files"></div><button id="add-file">＋ 新建文件</button><button id="import-file">↑ 导入文件</button><input id="file-upload" type="file" hidden></div><div class="debug-section"><h3>代码大纲 <small>OUTLINE</small></h3><div id="outline"></div></div><div class="policy-note"><span>ℹ</span><div>Cambridge 规范版本可配置<br><small>依据官方 Guide / Insert / v6 考纲实现。具体来源与模糊语义策略见语言参考。</small></div></div></aside><section class="output-panel panel"><nav class="tabs" aria-label="Output panels"><button data-tab="console" class="selected">终端 <span>CONSOLE</span></button><button data-tab="diagnostics">诊断 <span id="diagnostic-count">0</span></button><button data-tab="trace">追踪表</button><button data-tab="flow">流程图</button><button data-tab="ast">AST / Tokens</button><button data-tab="export">代码转换</button><button data-tab="reference">语言参考</button></nav><div id="console" class="tab-pane"><div id="console-output"><div class="terminal-hint">Pseudocode Ultra runtime<br><span>准备好了。点击运行，或点击行号旁设置断点后开始单步执行。</span></div></div><form id="input-form" hidden><label for="runtime-input">INPUT →</label><input id="runtime-input" autocomplete="off" placeholder="输入值后按 Enter"><button class="primary">提交</button></form></div><div id="diagnostics" class="tab-pane" hidden></div><div id="trace" class="tab-pane" hidden><div class="pane-actions"><button id="csv">↓ CSV</button><button id="xlsx">↓ Excel</button><label><input id="trace-blank" type="checkbox"> 填空练习</label><button id="grade-trace">批改本页</button><span id="trace-grade"></span><select id="trace-filter" aria-label="Trace row policy"><option value="all">每条语句</option><option value="changes">仅变量变化</option><option value="modules">模块进入/返回</option><option value="loops">每次循环</option><option value="branches">IF/CASE 分支</option><option value="left-to-right">从左到右</option></select><input id="trace-columns" aria-label="Trace columns" placeholder="列顺序，如 I, Total"><label><input id="hide-repeats" type="checkbox"> 隐藏重复值</label></div><div class="pane-actions"><button id="trace-prev">上一页</button><span id="trace-page" aria-live="polite"></span><button id="trace-next">下一页</button></div><div id="trace-table"></div></div><div id="flow" class="tab-pane" hidden><select id="flow-module" aria-label="Flowchart module"></select><div id="flow-content"></div></div><div id="ast" class="tab-pane" hidden><select id="ast-mode"><option>AST</option><option>Tokens</option></select><pre id="ast-content"></pre></div><div id="export" class="tab-pane" hidden><div class="pane-actions"><select id="target"><option value="python">Python 3</option><option value="java">Java 17+</option><option value="vb">VB.NET</option></select><button id="convert">转换</button><button id="export-download">↓ 下载</button><span>完整类型与虚拟文件语义 · 独立程序，仅依赖目标语言标准库。</span></div><pre id="export-content"></pre></div><div id="reference" class="tab-pane" hidden></div></section></main><footer><span><i></i> 不上传源码 · 在浏览器 Worker 中执行</span><span id="runtime-info">指令上限 100,000 · 确定性随机种子</span></footer></div><dialog id="file-dialog"><form method="dialog"><h2 id="file-title">文件</h2><textarea id="file-text" spellcheck="false"></textarea><div class="dialog-actions"><button value="cancel">取消</button><button id="file-save" value="save" class="primary">保存</button></div></form></dialog>`;
+  `<aside class="rail"><a class="brand" href="#" aria-label="Pseudocode Ultra">P<span>u</span></a><button id="workspace-nav" class="rail-active" title="Workspace">⌘</button><button id="examples-nav" title="Examples">▤</button><button id="help-nav" title="Language reference">?</button><div class="rail-bottom">CAIE</div></aside><div class="shell"><header><div><span class="eyebrow">COMPUTER SCIENCE LAB</span><h1>Pseudocode <em>Ultra</em></h1></div><div class="header-right"><span class="local-dot"></span>本地执行 · Local-first <button id="theme" title="Switch theme">◐</button></div></header><div id="storage-warning" class="storage-warning" role="alert" hidden>本机存储不可用或保存失败，部分内容可能仅在本次会话保留。请下载备份。 / Local storage failed; download a backup.</div><section class="toolbar"><div class="select-wrap"><label for="dialect">考试方言 / DIALECT</label><select id="dialect"><option>0478</option><option>2210</option><option>9618-AS</option><option>9618-A2</option></select></div><span class="divider"></span><button id="run" class="primary">▶ 运行 <kbd>Ctrl ↵</kbd></button><select id="run-mode" aria-label="运行方式 / Run mode"><option value="manual">手动运行</option><option value="change">输入后运行</option><option value="blur">失焦时运行</option></select><label class="fast-toggle" title="高速执行不生成追踪表，调试请关闭"><input id="fast-mode" type="checkbox">高速</label><button id="pause" disabled>Ⅱ 暂停</button><button id="step">↳ 单步</button><button id="over" disabled>↷ 跳过</button><button id="out" disabled>↑ 跳出</button><button id="stop" disabled>■ 停止</button><span class="toolbar-space"></span><button id="format">格式化</button><button id="print-pdf">PDF</button><button id="download">↓ 保存</button><button id="upload">↑ 打开</button><input id="source-upload" type="file" accept=".txt,.pseudo,.psc" hidden></section><main><section class="editor-panel panel"><div class="panel-heading"><div class="file-tab"><span class="file-icon">⌁</span> <span id="source-name">${escape(sourceName)}</span><span id="save-state" class="save-state" role="status">已保存本机</span></div><select id="examples" aria-label="Load example"><option value="">示例程序 / Examples</option>${examples.map((e, i) => `<option value="${i}">${e.name}</option>`).join("")}</select></div><div id="editor"></div><div id="signature-help" hidden></div><div class="editor-footer"><span id="cursor">Ln 1, Col 1</span><span>UTF-8 <span id="indent">4 spaces</span><button id="clear-breakpoints">清除断点</button></span></div></section><aside class="inspector panel"><div class="panel-heading"><h2>调试工作台 <small>DEBUGGER</small></h2><span id="status" class="status" role="status" aria-live="polite">就绪</span></div><div class="debug-section"><h3>变量 <small>VARIABLES</small></h3><div id="variables" class="empty">运行或单步执行后查看变量</div></div><div class="debug-section"><h3>监视表达式 <small>WATCH</small></h3><form id="watch-form"><input id="watch-input" placeholder="变量名称，例如 Total" aria-label="Watch variable"><button>＋</button></form><div id="watches"></div></div><div class="debug-section"><h3>调用栈 <small>CALL STACK</small></h3><div id="stack" class="empty">尚未进入子程序</div></div><div class="debug-section"><h3>虚拟文件 <small>FILES · IndexedDB</small></h3><div id="files"></div><button id="add-file">＋ 新建文件</button><button id="import-file">↑ 导入文件</button><button id="backup-files">↓ 备份全部</button><input id="file-upload" type="file" hidden></div><div class="debug-section"><h3>代码大纲 <small>OUTLINE</small></h3><div id="outline"></div></div><div class="policy-note"><span>ℹ</span><div>Cambridge 规范版本可配置<br><small>依据官方 Guide / Insert / v6 考纲实现。具体来源与模糊语义策略见语言参考。</small></div></div></aside><section class="output-panel panel"><nav class="tabs" role="tablist" aria-label="Output panels"><button data-tab="console" class="selected">终端 <span>CONSOLE</span></button><button data-tab="diagnostics">诊断 <span id="diagnostic-count">0</span></button><button data-tab="trace">追踪表</button><button data-tab="flow">流程图</button><button data-tab="ast">AST / Tokens</button><button data-tab="export">代码转换</button><button data-tab="reference">语言参考</button></nav><div id="console" class="tab-pane"><div id="console-output"><div class="terminal-hint">Pseudocode Ultra runtime<br><span>准备好了。点击运行，或点击行号旁设置断点后开始单步执行。</span></div></div><form id="input-form" hidden><label for="runtime-input">INPUT →</label><input id="runtime-input" autocomplete="off" placeholder="输入值后按 Enter"><button class="primary">提交</button></form></div><div id="diagnostics" class="tab-pane" hidden></div><div id="trace" class="tab-pane" hidden><div class="pane-actions"><button id="csv">↓ CSV</button><button id="xlsx">↓ Excel</button><label><input id="trace-blank" type="checkbox"> 填空练习</label><button id="grade-trace">批改本页</button><span id="trace-grade"></span><select id="trace-filter" aria-label="Trace row policy"><option value="all">每条语句</option><option value="changes">仅变量变化</option><option value="modules">模块进入/返回</option><option value="loops">每次循环</option><option value="branches">IF/CASE 分支</option><option value="left-to-right">从左到右</option></select><input id="trace-columns" aria-label="Trace columns" placeholder="列顺序，如 I, Total"><label><input id="hide-repeats" type="checkbox"> 隐藏重复值</label></div><div class="pane-actions"><button id="trace-prev">上一页</button><span id="trace-page" aria-live="polite"></span><button id="trace-next">下一页</button></div><div id="trace-table"></div></div><div id="flow" class="tab-pane" hidden><select id="flow-module" aria-label="Flowchart module"></select><div id="flow-content"></div></div><div id="ast" class="tab-pane" hidden><select id="ast-mode" aria-label="AST or Tokens"><option>AST</option><option>Tokens</option></select><pre id="ast-content"></pre></div><div id="export" class="tab-pane" hidden><div class="pane-actions"><select id="target" aria-label="转换语言 / Target language"><option value="python">Python 3</option><option value="java">Java 17+</option><option value="vb">VB.NET</option></select><button id="convert">转换</button><button id="export-download" disabled>↓ 下载</button><span>完整类型与虚拟文件语义 · 独立程序，仅依赖目标语言标准库。</span></div><pre id="export-content"></pre></div><div id="reference" class="tab-pane" hidden></div></section></main><footer><span><i></i> 不上传源码 · 在浏览器 Worker 中执行</span><span id="runtime-info">指令上限 100,000 · 确定性随机种子</span></footer></div><dialog id="file-dialog" aria-labelledby="file-title"><form method="dialog"><h2 id="file-title">文件</h2><p id="file-record-note" hidden>此文件包含随机记录；修改文本会保留所有记录。 / Random records will be preserved.</p><textarea aria-labelledby="file-title" id="file-text" spellcheck="false"></textarea><div class="dialog-actions"><button value="cancel">取消</button><button id="file-save" value="save" class="primary">保存</button></div></form></dialog>`;
 const highlight = StateEffect.define<number>();
 const currentLine = StateField.define<DecorationSet>({
   create: () => Decoration.none,
@@ -223,8 +282,17 @@ const createLanguageSupport = () =>
 const indentConfig = new Compartment();
 const editor = new EditorView({
   state: EditorState.create({
-    doc: localStorage.getItem("source") || examples[0].code,
+    doc: settings.getItem("source") ?? examples[0].code,
     extensions: [
+      EditorView.contentAttributes.of({
+        "aria-label": "伪代码编辑器 / Pseudocode editor",
+        spellcheck: "false",
+      }),
+      EditorView.domEventHandlers({
+        blur() {
+          if (runMode === "blur") scheduleAutoRun();
+        },
+      }),
       numberConfig.of(
         lineNumbers({
           formatNumber: (n) => (continuationLines.has(n) ? "" : String(n)),
@@ -446,24 +514,28 @@ const editor = new EditorView({
       }),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
-          if (busy) {
-            worker?.terminate();
-            busy = false;
-            paused = false;
-            queueMicrotask(() => {
-              mark(0);
-              status("代码已更改");
-              $("input-form").hidden = true;
-              buttons();
-            });
-          }
-          localStorage.setItem("source", update.state.doc.toString());
+          worker?.terminate();
+          worker = undefined;
+          busy = paused = false;
+          clearTimeout(autoRunTimer);
+          queueMicrotask(() => {
+            clearDebugState();
+            status("代码已更改");
+            $("input-form").hidden = true;
+            buttons();
+          });
+          const saved = settings.setItem("source", update.state.doc.toString());
+          $("save-state").textContent = saved
+            ? "已保存本机"
+            : "未保存 · 请下载";
+          invalidateConversion();
           breakpoints.clear();
           clearTimeout(diagnosticTimer);
           diagnosticTimer = setTimeout(() => {
             diagnose(editor.state.doc.toString());
             refreshTab();
           }, 450);
+          if (runMode === "change") scheduleAutoRun();
         }
         if (update.selectionSet || update.docChanged) {
           const a = update.state.doc.lineAt(update.state.selection.main.head);
@@ -491,6 +563,7 @@ const editor = new EditorView({
 let latestDiagnostics: Diagnostic[] = [];
 let diagnosticTimer: ReturnType<typeof setTimeout>;
 async function diagnose(source: string) {
+  const requestedProfile = analysisProfileKey();
   let d: Diagnostic[];
   try {
     d = await analyzeAsync(source);
@@ -506,7 +579,11 @@ async function diagnose(source: string) {
       },
     ];
   }
-  if (source !== editor.state.doc.toString()) return d;
+  if (
+    source !== editor.state.doc.toString() ||
+    requestedProfile !== analysisProfileKey()
+  )
+    return d;
   latestDiagnostics = d;
   $("diagnostic-count").textContent = String(d.length);
   $("diagnostics").innerHTML = d.length
@@ -524,13 +601,60 @@ function status(s: string) {
   $("status").textContent = s;
 }
 function buttons() {
-  ($("run") as HTMLButtonElement).disabled = busy && !paused;
+  ($("run") as HTMLButtonElement).disabled = !filesReady || (busy && !paused);
   ($("pause") as HTMLButtonElement).disabled =
     !busy || paused || fastBusy || !$("input-form").hidden;
-  $<HTMLButtonElement>("step").disabled = busy && !paused;
+  $<HTMLButtonElement>("step").disabled = !filesReady || (busy && !paused);
   for (const id of ["over", "out"])
     ($(id) as HTMLButtonElement).disabled = !paused;
   ($("stop") as HTMLButtonElement).disabled = !busy;
+  for (const id of ["add-file", "import-file", "backup-files"])
+    $<HTMLButtonElement>(id).disabled = !filesReady;
+}
+function clearDebugState() {
+  trace = [];
+  tracePage = 0;
+  for (const key of Object.keys(attempts)) delete attempts[key];
+  lastEvent = undefined;
+  watchValues.clear();
+  $("variables").innerHTML =
+    '<span class="empty">运行或单步执行后查看变量</span>';
+  $("stack").innerHTML = '<span class="empty">尚未进入子程序</span>';
+  mark(0);
+  paintWatches();
+  if (tab === "trace") renderTrace();
+}
+function invalidateConversion() {
+  converted = "";
+  $("export-content").textContent =
+    "源码、设置或文件变化后，请重新转换。 / Convert the current program.";
+  $<HTMLButtonElement>("export-download").disabled = true;
+}
+function scheduleAutoRun() {
+  clearTimeout(autoRunTimer);
+  const source = editor.state.doc.toString(),
+    key = analysisProfileKey();
+  autoRunTimer = setTimeout(
+    async () => {
+      if (
+        !source.trim() ||
+        !filesReady ||
+        busy ||
+        source !== editor.state.doc.toString() ||
+        key !== analysisProfileKey()
+      )
+        return;
+      const diagnostics = await diagnose(source);
+      if (
+        source === editor.state.doc.toString() &&
+        key === analysisProfileKey() &&
+        !busy &&
+        !diagnostics.some((d) => d.severity === "error")
+      )
+        start("run");
+    },
+    runMode === "change" ? 700 : 0,
+  );
 }
 function log(s: string, cls = "") {
   const row = document.createElement("div");
@@ -576,9 +700,12 @@ function inspectorValue(k: string, v: any, depth = 0): string {
     )
       .map(([key, value]) => inspectorValue(key, value, depth + 1))
       .join("")}</div></details>`;
-  return `<div class="variable scalar"><span>${escape(k)}</span><code>${escape(typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : v)}</code></div>`;
+  const text = typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : v;
+  return `<div class="variable scalar"><span>${escape(k)}</span><code title="${escape(text)}" tabindex="0">${escape(text)}</code></div>`;
 }
 function start(mode: string) {
+  if (!filesReady || (busy && !paused)) return;
+  clearTimeout(autoRunTimer);
   if (busy && paused) {
     worker?.postMessage({ type: "resume", mode });
     paused = false;
@@ -593,6 +720,7 @@ function start(mode: string) {
   busy = true;
   fastBusy = mode === "run" && $<HTMLInputElement>("fast-mode").checked;
   paused = false;
+  clearDebugState();
   trace = [];
   tracePage = 0;
   watchValues.clear();
@@ -635,6 +763,7 @@ function start(mode: string) {
       mark(0);
       trace = d.trace;
       files = d.files;
+      invalidateConversion();
       void persistFiles();
       if (d.state) renderState(d.state);
       else if (lastEvent) renderState(lastEvent);
@@ -648,6 +777,13 @@ function start(mode: string) {
       paused = false;
       status("执行错误");
       mark(d.line);
+      if (d.files) {
+        files = d.files;
+        renderFiles();
+        void persistFiles();
+        invalidateConversion();
+      }
+      if (d.state) renderState(d.state);
       log(
         `${d.code} · Line ${d.line}:${d.column || 1}\n${d.message}${d.stack?.length ? "\n" + d.stack.join(" → ") : ""}${d.source ? `\n${d.source.doc} ${d.source.section} (${d.source.version}; ${d.source.verified ? "官方来源" : "工程策略"})` : ""}`,
         "error",
@@ -659,7 +795,9 @@ function start(mode: string) {
   worker.onerror = (e) => {
     status("Worker 错误");
     log(e.message, "error");
-    busy = false;
+    busy = paused = false;
+    $("input-form").hidden = true;
+    mark(0);
     buttons();
   };
   worker.postMessage({
@@ -669,8 +807,8 @@ function start(mode: string) {
     mode,
     breakpoints: [...breakpoints],
     files,
-    maxSteps: Number(localStorage.getItem("maxSteps") || 100000),
-    seed: Number(localStorage.getItem("seed") || 42),
+    maxSteps: maxSteps(),
+    seed: randomSeed(),
     strict: strictness === "exam",
     fast: fastBusy,
     policies: policyState,
@@ -689,6 +827,7 @@ function step(mode: string) {
   }
 }
 function stop() {
+  clearTimeout(autoRunTimer);
   worker?.terminate();
   worker = undefined;
   busy = false;
@@ -698,6 +837,12 @@ function stop() {
   $("input-form").hidden = true;
   buttons();
 }
+$("run-mode").onchange = () => {
+  clearTimeout(autoRunTimer);
+  runMode = $<HTMLSelectElement>("run-mode").value as typeof runMode;
+  settings.setItem("runMode", runMode);
+};
+$<HTMLSelectElement>("run-mode").value = runMode;
 $("run").onclick = () => start("run");
 $("step").onclick = () => step("step");
 $("over").onclick = () => step("over");
@@ -724,12 +869,14 @@ function setSource(s: string) {
 }
 function setDialect(id: DialectId) {
   stop();
+  clearDebugState();
+  invalidateConversion();
   language = id;
   editor.dispatch({
     effects: languageConfig.reconfigure(createLanguageSupport()),
   });
   $<HTMLSelectElement>("dialect").value = id;
-  localStorage.setItem("dialect", id);
+  settings.setItem("dialect", id);
   editor.dispatch({
     effects: indentConfig.reconfigure(
       indentUnit.of(" ".repeat(profile(id).indent)),
@@ -748,6 +895,10 @@ $("examples").onchange = () => {
   const ex = examples[Number(v)];
   setDialect(ex.dialect as DialectId);
   setSource(ex.code);
+  sourceName = "main.pseudo";
+  settings.setItem("sourceName", sourceName);
+  $("source-name").textContent = sourceName;
+  $<HTMLSelectElement>("examples").value = "";
 };
 $("format").onclick = () => {
   const source = format(editor.state.doc.toString(), language);
@@ -763,20 +914,31 @@ function download(name: string, s: string, type = "text/plain") {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-$("download").onclick = () =>
-  download("main.pseudo", editor.state.doc.toString());
+$("download").onclick = () => download(sourceName, editor.state.doc.toString());
 $("upload").onclick = () => $("source-upload").click();
 $("source-upload").onchange = async () => {
-  const f = $<HTMLInputElement>("source-upload").files?.[0];
-  if (f) setSource(await f.text());
+  const input = $<HTMLInputElement>("source-upload"),
+    f = input.files?.[0];
+  try {
+    if (f) {
+      const source = await f.text();
+      setSource(source);
+      sourceName = f.name;
+      settings.setItem("sourceName", sourceName);
+      $("source-name").textContent = sourceName;
+    }
+  } catch (error: any) {
+    log("无法打开源码 / Unable to open source: " + error.message, "error");
+    showTab("console");
+  } finally {
+    input.value = "";
+  }
 };
 $("clear-breakpoints").onclick = () => {
   breakpoints.clear();
   editor.dispatch({});
   worker?.postMessage({ type: "breakpoints", lines: [] });
 };
-const watches = new Set<string>();
-const watchValues = new Map<string, string>();
 $("watch-form").onsubmit = (e) => {
   e.preventDefault();
   const input = $<HTMLInputElement>("watch-input");
@@ -785,7 +947,7 @@ $("watch-form").onsubmit = (e) => {
   renderWatches();
 };
 function renderWatches() {
-  if (paused || !$("input-form").hidden)
+  if (worker && (paused || !busy || !$("input-form").hidden))
     for (const expression of watches)
       worker?.postMessage({ type: "watch", expression });
   paintWatches();
@@ -802,6 +964,7 @@ $("watches").onclick = (e) => {
   const k = (e.target as HTMLElement).dataset.removeWatch;
   if (k) {
     watches.delete(k);
+    watchValues.delete(k);
     renderWatches();
   }
 };
@@ -810,22 +973,50 @@ function showTab(name: string) {
   document
     .querySelectorAll<HTMLElement>(".tab-pane")
     .forEach((e) => (e.hidden = e.id !== name));
-  document
-    .querySelectorAll<HTMLElement>("[data-tab]")
-    .forEach((e) => e.classList.toggle("selected", e.dataset.tab === name));
+  document.querySelectorAll<HTMLElement>("[data-tab]").forEach((e) => {
+    const selected = e.dataset.tab === name;
+    e.classList.toggle("selected", selected);
+    e.setAttribute("aria-selected", String(selected));
+    e.tabIndex = selected ? 0 : -1;
+  });
   refreshTab();
 }
-document
-  .querySelectorAll<HTMLElement>("[data-tab]")
-  .forEach((e) => (e.onclick = () => showTab(e.dataset.tab!)));
+document.querySelectorAll<HTMLElement>("[data-tab]").forEach((e) => {
+  const name = e.dataset.tab!;
+  e.id = "tab-" + name;
+  e.setAttribute("role", "tab");
+  e.setAttribute("aria-controls", name);
+  $(name).setAttribute("role", "tabpanel");
+  $(name).setAttribute("aria-labelledby", e.id);
+  e.onclick = () => showTab(name);
+  e.onkeydown = (event) => {
+    const tabs = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-tab]"),
+      ),
+      index = tabs.indexOf(e);
+    const next =
+      event.key === "ArrowRight"
+        ? (index + 1) % tabs.length
+        : event.key === "ArrowLeft"
+          ? (index + tabs.length - 1) % tabs.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? tabs.length - 1
+              : -1;
+    if (next >= 0) {
+      event.preventDefault();
+      showTab(tabs[next].dataset.tab!);
+      tabs[next].focus();
+    }
+  };
+});
+showTab(tab);
 function refreshTab() {
   if (tab === "trace") renderTrace();
   if (tab === "flow") renderFlow();
   if (tab === "ast") renderAST();
 }
-const attempts: Record<string, string> = {};
-const tracePageSize = 200;
-let tracePage = 0;
 function currentTrace() {
   return traceRows(trace, {
     policy: $<HTMLSelectElement>("trace-filter")
@@ -869,7 +1060,7 @@ for (const id of [
 ])
   $(id).onchange = () => {
     tracePage = 0;
-    if (id === "trace-filter")
+    if (["trace-filter", "trace-columns", "hide-repeats"].includes(id))
       for (const key of Object.keys(attempts)) delete attempts[key];
     $("trace-grade").textContent = "";
     renderTrace();
@@ -994,29 +1185,42 @@ $("flow-content").onclick = (e) => {
   }
 };
 $("ast-mode").onchange = renderAST;
-let converted = "";
+$("target").onchange = invalidateConversion;
 $("convert").onclick = async () => {
+  const source = editor.state.doc.toString(),
+    profileKey = analysisProfileKey(),
+    target = $<HTMLSelectElement>("target").value as Target;
+  const fileSnapshot = files,
+    policyKey = JSON.stringify(policyState);
+  $<HTMLButtonElement>("convert").disabled = true;
   try {
     const { transpile } = await import("../core/transpile");
-    converted = transpile(
-      editor.state.doc.toString(),
-      language,
-      $<HTMLSelectElement>("target").value as Target,
-      {
-        files,
-        seed: Number(localStorage.getItem("seed") || 42),
-        maxSteps: Number(localStorage.getItem("maxSteps") || 100000),
-        policies: policyState,
-        profileOptions: {
-          guideVersion,
-          logicalPrecedence: currentProfile().logicalPrecedence,
-        },
+    if (
+      source !== editor.state.doc.toString() ||
+      profileKey !== analysisProfileKey() ||
+      target !== $<HTMLSelectElement>("target").value ||
+      fileSnapshot !== files ||
+      policyKey !== JSON.stringify(policyState)
+    )
+      return;
+    converted = transpile(source, language, target, {
+      files,
+      seed: randomSeed(),
+      maxSteps: maxSteps(),
+      policies: policyState,
+      profileOptions: {
+        guideVersion,
+        logicalPrecedence: currentProfile().logicalPrecedence,
       },
-    );
+    });
     $("export-content").textContent = converted;
+    $<HTMLButtonElement>("export-download").disabled = !converted;
   } catch (e: any) {
     converted = "";
     $("export-content").textContent = e.message;
+    $<HTMLButtonElement>("export-download").disabled = true;
+  } finally {
+    $<HTMLButtonElement>("convert").disabled = false;
   }
 };
 $("export-download").onclick = () => {
@@ -1045,7 +1249,7 @@ function renderReference() {
     filenameCase: ["sensitive", "insensitive"],
   };
   $("reference").innerHTML =
-    `<h3>运行与规范设置</h3><div class="settings-grid"><label>Guide 版本 ${select("guide-version", ["2026", "2027–2029"], guideVersion)}</label><label>逻辑优先级 ${select("logical-precedence", ["standard", "leftToRight"], currentProfile().logicalPrecedence)}</label><label>检查模式 ${select("strictness", ["exam", "learning", "lenient"], strictness)}</label><label>指令上限 <input id="max-steps" type="number" min="1" max="1000000000" value="${Number(localStorage.getItem("maxSteps") || 100000)}"></label><label>随机种子 <input id="random-seed" type="number" min="0" max="4294967295" value="${Number(localStorage.getItem("seed") || 42)}"></label><label><input id="style-checks" type="checkbox" ${p.styleChecks ? "checked" : ""}> 风格检查（PascalCase / 缩进）</label></div><h3>${escape(p.id)} · ${escape(p.version)}</h3><p>语法依据 Cambridge 官方公开文档。0478/2210 使用 2026–2028 v6；9618 使用所选 Guide 与 June 2024 Insert。AS/A2 特性边界依据 9618 考纲 10、19、20 节。</p><h3>模糊语义策略</h3><p>下列选项是官方未完全规定的运行策略；修改后同时应用到解释器和三语言导出。高速优化仅用于默认策略，调试模式始终保留逐语句语义。</p><div class="settings-grid">${Object.entries(
+    `<h3>运行与规范设置</h3><div class="settings-grid"><label>Guide 版本 ${select("guide-version", ["2026", "2027–2029"], guideVersion)}</label><label>逻辑优先级 ${select("logical-precedence", ["standard", "leftToRight"], currentProfile().logicalPrecedence)}</label><label>检查模式 ${select("strictness", ["exam", "learning", "lenient"], strictness)}</label><label>指令上限 <input id="max-steps" type="number" required min="1" max="1000000000" value="${maxSteps()}"></label><label>随机种子 <input id="random-seed" type="number" required min="0" max="4294967295" value="${randomSeed()}"></label><label><input id="style-checks" type="checkbox" ${p.styleChecks ? "checked" : ""}> 风格检查（PascalCase / 缩进）</label></div><h3>${escape(p.id)} · ${escape(p.version)}</h3><p>语法依据 Cambridge 官方公开文档。0478/2210 使用 2026–2028 v6；9618 使用所选 Guide 与 June 2024 Insert。AS/A2 特性边界依据 9618 考纲 10、19、20 节。</p><h3>模糊语义策略</h3><p>下列选项是官方未完全规定的运行策略；修改后同时应用到解释器和三语言导出。高速优化仅用于默认策略，调试模式始终保留逐语句语义。</p><div class="settings-grid">${Object.entries(
       policyChoices,
     )
       .map(
@@ -1063,34 +1267,39 @@ function renderReference() {
         "",
       )}</table><h3>规范来源</h3><a href="${p.source.url}" target="_blank" rel="noreferrer">${escape(p.source.doc)} · ${escape(p.source.version)} · ${escape(p.source.section)}</a>`;
   $("logical-precedence").onchange = () => {
-    localStorage.setItem(
+    settings.setItem(
       "logicalPrecedence",
       $<HTMLSelectElement>("logical-precedence").value,
     );
     stop();
+    invalidateConversion();
     forceLinting(editor);
     diagnose(editor.state.doc.toString());
   };
   $("guide-version").onchange = () => {
     guideVersion = $<HTMLSelectElement>("guide-version").value as any;
-    localStorage.setItem("guideVersion", guideVersion);
+    settings.setItem("guideVersion", guideVersion);
     stop();
+    invalidateConversion();
+    forceLinting(editor);
     diagnose(editor.state.doc.toString());
     renderReference();
   };
   $("strictness").onchange = () => {
     strictness = $<HTMLSelectElement>("strictness").value as any;
-    localStorage.setItem("strictness", strictness);
+    settings.setItem("strictness", strictness);
     stop();
+    invalidateConversion();
     forceLinting(editor);
     diagnose(editor.state.doc.toString());
   };
   $("style-checks").onchange = () => {
-    localStorage.setItem(
+    settings.setItem(
       "styleChecks",
       String($<HTMLInputElement>("style-checks").checked),
     );
     forceLinting(editor);
+    invalidateConversion();
     diagnose(editor.state.doc.toString());
   };
   for (const [id, name] of [
@@ -1099,34 +1308,53 @@ function renderReference() {
   ])
     $(id).onchange = () => {
       const input = $<HTMLInputElement>(id);
+      input.setCustomValidity("");
       if (input.checkValidity() && Number.isInteger(Number(input.value))) {
-        localStorage.setItem(name, input.value);
+        settings.setItem(name, input.value);
         stop();
-      } else input.reportValidity();
+        invalidateConversion();
+        $("runtime-info").textContent =
+          `指令上限 ${maxSteps().toLocaleString()} · 随机种子 ${randomSeed()}`;
+      } else {
+        if (input.value && !Number.isInteger(Number(input.value)))
+          input.setCustomValidity("请输入整数 / Enter an integer");
+        input.reportValidity();
+        input.value = String(name === "seed" ? randomSeed() : maxSteps());
+        input.setCustomValidity("");
+      }
     };
   for (const name of Object.keys(policyChoices))
     $("policy-" + name).onchange = () => {
       const value = $<HTMLSelectElement>("policy-" + name).value;
       (policyState as any)[name] =
         name === "shortCircuit" ? value === "true" : value;
-      localStorage.setItem("policies", JSON.stringify(policyState));
+      settings.setItem("policies", JSON.stringify(policyState));
       stop();
+      invalidateConversion();
     };
 }
 function putVirtualFile(name: string, value: VirtualFile) {
+  if (busy) stop();
   Object.defineProperty(files, name, {
     value,
     enumerable: true,
     configurable: true,
     writable: true,
   });
+  invalidateConversion();
 }
 async function importVirtualFile(file: File) {
-  let name = file.name,
-    number = 2;
-  while (Object.prototype.hasOwnProperty.call(files, name))
-    name = file.name + " (" + number++ + ")";
-  putVirtualFile(name, { text: await file.text() });
+  const text = await file.text();
+  const incoming = file.name.endsWith(".pufiles.json")
+    ? importFiles(text)
+    : { [file.name]: { text } };
+  for (const [original, value] of Object.entries(incoming)) {
+    let name = original,
+      number = 2;
+    while (Object.prototype.hasOwnProperty.call(files, name))
+      name = original + " (" + number++ + ")";
+    putVirtualFile(name, value);
+  }
 }
 let editingFile = "";
 function renderFiles() {
@@ -1134,7 +1362,7 @@ function renderFiles() {
     ? Object.keys(files)
         .map(
           (k) =>
-            `<div class="virtual-file"><button data-file="${escape(k)}">▤ ${escape(k)}</button><button data-delete="${escape(k)}" aria-label="Delete file">×</button></div>`,
+            `<div class="virtual-file"><button data-file="${escape(k)}" title="${escape(k)}">▤ ${escape(k)}</button><button data-export-file="${escape(k)}" aria-label="下载文件 / Download ${escape(k)}" title="下载文件 / Download">↓</button><button data-delete="${escape(k)}" aria-label="删除文件 / Delete ${escape(k)}">×</button></div>`,
         )
         .join("")
     : '<span class="empty">暂无文件 · 运行 WRITEFILE 可创建</span>';
@@ -1144,41 +1372,76 @@ async function persistFiles() {
     await saveFiles(files);
   } catch {
     log("文件持久化失败，请导出备份。", "warning");
+    $("storage-warning").hidden = false;
   }
 }
 function editFile(name: string) {
   editingFile = name;
   $("file-title").textContent = name;
   $<HTMLTextAreaElement>("file-text").value = files[name]?.text || "";
+  $("file-record-note").hidden = !files[name]?.records;
   $<HTMLDialogElement>("file-dialog").showModal();
 }
 $("add-file").onclick = () => {
   const name = prompt("文件名 / Filename");
-  if (name?.trim()) editFile(name.trim());
+  if (name?.trim()) {
+    if (Object.prototype.hasOwnProperty.call(files, name.trim())) {
+      alert(
+        "文件已存在，请点击文件名编辑，或选择不同名称。 / File exists. Open it to edit or choose another name.",
+      );
+      return;
+    }
+    editFile(name.trim());
+  }
 };
 $("files").onclick = (e) => {
-  const el = e.target as HTMLElement;
+  const el = (e.target as HTMLElement).closest<HTMLElement>("button");
+  if (!el) return;
   if (el.dataset.file) editFile(el.dataset.file);
+  if (el.dataset.exportFile) {
+    const name = el.dataset.exportFile,
+      file = files[name];
+    if (file.records)
+      download(
+        name + ".pufiles.json",
+        exportFiles({ [name]: file }),
+        "application/json",
+      );
+    else download(name, file.text);
+  }
   if (el.dataset.delete && confirm("删除此文件？")) {
+    if (busy) stop();
     delete files[el.dataset.delete];
+    invalidateConversion();
     renderFiles();
     void persistFiles();
   }
 };
 $("file-save").onclick = () => {
   putVirtualFile(editingFile, {
+    ...files[editingFile],
     text: $<HTMLTextAreaElement>("file-text").value,
   });
   renderFiles();
   void persistFiles();
 };
+$("backup-files").onclick = () =>
+  download("workspace.pufiles.json", exportFiles(files), "application/json");
 $("import-file").onclick = () => $("file-upload").click();
 $("file-upload").onchange = async () => {
-  const f = $<HTMLInputElement>("file-upload").files?.[0];
-  if (f) {
-    await importVirtualFile(f);
-    renderFiles();
-    await persistFiles();
+  const input = $<HTMLInputElement>("file-upload"),
+    f = input.files?.[0];
+  try {
+    if (f) {
+      await importVirtualFile(f);
+      renderFiles();
+      await persistFiles();
+    }
+  } catch (error: any) {
+    log("无法导入文件 / Import failed: " + error.message, "error");
+    showTab("console");
+  } finally {
+    input.value = "";
   }
 };
 $("diagnostics").onclick = (e) => {
@@ -1201,13 +1464,12 @@ $("diagnostics").onclick = (e) => {
 };
 $("theme").onclick = () => {
   document.body.classList.toggle("dark");
-  localStorage.setItem(
+  settings.setItem(
     "theme",
     document.body.classList.contains("dark") ? "dark" : "light",
   );
 };
-if (localStorage.getItem("theme") === "dark")
-  document.body.classList.add("dark");
+if (settings.getItem("theme") === "dark") document.body.classList.add("dark");
 $("help-nav").onclick = () => showTab("reference");
 $("examples-nav").onclick = () => $<HTMLSelectElement>("examples").focus();
 $("workspace-nav").onclick = () => editor.focus();
@@ -1219,6 +1481,11 @@ loadFiles()
   .catch(() => {
     renderFiles();
     log("IndexedDB 不可用，文件仅在内存中保存。", "warning");
+    $("storage-warning").hidden = false;
+  })
+  .finally(() => {
+    filesReady = true;
+    buttons();
   });
 diagnose(editor.state.doc.toString());
 
@@ -1267,7 +1534,7 @@ status("就绪");
 
 $("print-pdf").onclick = () => {
   try {
-    printSource(editor.state.doc.toString());
+    printSource(editor.state.doc.toString(), sourceName);
   } catch (e: any) {
     log(e.message, "error");
     showTab("console");
@@ -1306,8 +1573,14 @@ $("files").ondragleave = () => $("files").classList.remove("drag-active");
 $("files").ondrop = async (e) => {
   e.preventDefault();
   $("files").classList.remove("drag-active");
-  for (const file of Array.from(e.dataTransfer?.files || []))
-    await importVirtualFile(file);
-  renderFiles();
-  await persistFiles();
+  if (!filesReady) return;
+  try {
+    for (const file of Array.from(e.dataTransfer?.files || []))
+      await importVirtualFile(file);
+    renderFiles();
+    await persistFiles();
+  } catch (error: any) {
+    log("无法导入文件 / Import failed: " + error.message, "error");
+    showTab("console");
+  }
 };

@@ -40,6 +40,16 @@ function fail(e: any) {
     column: e.column || machine?.column || 1,
     source: e.source,
     stack: e.frames || machine?.stack,
+    files: machine?.files,
+    state: machine
+      ? {
+          kind: "step",
+          line: machine.line,
+          variables: machine.snapshot(machine.currentScope),
+          values: machine.inspect(machine.currentScope),
+          stack: [...machine.stack],
+        }
+      : undefined,
   });
 }
 function pump() {
@@ -118,6 +128,8 @@ onmessage = ({ data: d }) => {
     batch = [];
     traceIndex = 0;
     truncated = false;
+    machine = undefined;
+    result = undefined;
     traceLimit = Math.max(1, Math.min(100000, d.traceLimit || 50000));
     try {
       machine = new Machine(d.source, d.dialect, {

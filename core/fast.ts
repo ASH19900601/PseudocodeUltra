@@ -6,6 +6,7 @@ export interface FastContext {
   steps: number;
   limit: number;
   line: number;
+  column?: number;
   fail: (code: string, message: string) => never;
   lookup: (
     name: string,
@@ -26,19 +27,24 @@ export function optimizeLoop(node: Node, context: FastContext): boolean {
       )
     )
       throw new Error("unsupported");
+    const alias = cells.indexOf(cell);
+    if (alias >= 0) {
+      names.set(key, alias);
+      return alias;
+    }
     const i = cells.length;
     cells.push(cell);
     names.set(key, i);
     return i;
   };
-  const read = (name: string) => `read(v${index(name)})`;
   const exp = (e: Expr): string => {
+    const location = `${e.token.line},${e.token.column}`;
     switch (e.kind) {
       case "literal":
         if (e.type === "DATE") throw new Error("unsupported");
         return JSON.stringify(e.value);
       case "name":
-        return read(e.name);
+        return `read(v${index(e.name)},${location})`;
       case "unary":
         if (e.op === "^") throw new Error("unsupported");
         return e.op === "NOT"
@@ -51,8 +57,9 @@ export function optimizeLoop(node: Node, context: FastContext): boolean {
           return `(truth(${a}) ${e.op === "AND" ? "&&" : "||"} truth(${b}))`;
         if (e.op === "&") return `(${a}+${b})`;
         if (e.op === "DIV" || e.op === "MOD" || e.op === "/")
-          return `divide(${JSON.stringify(e.op)},${a},${b})`;
-        if (e.op === "^") return `(${a}**${b})`;
+          return `divide(${JSON.stringify(e.op)},${a},${b},${location})`;
+        if (["+", "-", "*", "^"].includes(e.op))
+          return `finite((${a}${e.op === "^" ? "**" : e.op}${b}),${location})`;
         return `(${a} ${{ "=": "===", "<>": "!==" }[e.op] || e.op} ${b})`;
       }
       default:
@@ -68,7 +75,7 @@ export function optimizeLoop(node: Node, context: FastContext): boolean {
   const block = (nodes: Node[]): string =>
     nodes
       .map((n) => {
-        const tick = `line=${n.line};if(++steps>limit)fail('STEP_LIMIT','Instruction limit exceeded');`;
+        const tick = `line=${n.line};column=${n.span?.column || 1};if(++steps>limit)fail('STEP_LIMIT','Instruction limit exceeded');`;
         switch (n.kind) {
           case "assign":
             if (n.target.kind !== "name") throw new Error("unsupported");
@@ -85,18 +92,17 @@ export function optimizeLoop(node: Node, context: FastContext): boolean {
               c = "c" + id;
             return (
               tick +
-              `{let ${a}=${exp(n.from)},${b}=${exp(n.to)},${c}=${exp(n.step)};if(![${a},${b},${c}].every(Number.isInteger))fail('FOR_TYPE','Integer bounds required');if(${c}===0)fail('FOR_STEP','STEP cannot be zero');${write(n.name, a)}while(${c}>0?v${index(n.name)}<=${b}:v${index(n.name)}>=${b}){line=${n.line};if(++steps>limit)fail('STEP_LIMIT','Instruction limit exceeded');${block(n.body)}${write(n.name, `v${index(n.name)}+${c}`)}}}`
+              `{let ${a}=${exp(n.from)},${b}=${exp(n.to)},${c}=${exp(n.step)};if(![${a},${b},${c}].every(Number.isInteger))fail('FOR_TYPE','Integer bounds required');if(${c}===0)fail('FOR_STEP','STEP cannot be zero');${write(n.name, a)}while(${c}>0?v${index(n.name)}<=${b}:v${index(n.name)}>=${b}){${block(n.body)}${tick}${write(n.name, `v${index(n.name)}+${c}`)}}}`
             );
           }
           case "while":
             return (
-              tick +
-              `while(truth(${exp(n.cond)})){line=${n.line};if(++steps>limit)fail('STEP_LIMIT','Instruction limit exceeded');${block(n.body)}}`
+              tick + `while(truth(${exp(n.cond)})){${block(n.body)}${tick}}`
             );
           case "repeat":
             return (
               tick +
-              `do{line=${n.line};if(++steps>limit)fail('STEP_LIMIT','Instruction limit exceeded');${block(n.body)}}while(!truth(${exp(n.cond)}));`
+              `while(true){${block(n.body)}if(truth(${exp(n.cond)}))break;${tick}}`
             );
           default:
             throw new Error("unsupported");
@@ -109,7 +115,7 @@ export function optimizeLoop(node: Node, context: FastContext): boolean {
   } catch {
     return false;
   }
-  const prelude = `let steps=context.steps,line=context.line;const limit=context.limit;const fail=(code,message)=>{context.line=line;context.steps=steps;context.fail(code,message)};const read=v=>{if(v===undefined)fail('UNINITIALIZED','Uninitialized variable');return v};const truth=v=>{if(typeof v!=='boolean')fail('TYPE_MISMATCH','Boolean condition required');return v};const divide=(op,a,b)=>{if(b===0)fail('DIV_ZERO','Division by zero');return op==='/'?a/b:op==='DIV'?Math.trunc(a/b):a-Math.trunc(a/b)*b};`;
+  const prelude = `let steps=context.steps,line=context.line,column=context.column||1;const limit=context.limit;const fail=(code,message)=>{context.line=line;context.column=column;context.steps=steps;context.fail(code,message)};const read=(v,l,c)=>{if(v===undefined){line=l;column=c;fail('UNINITIALIZED','Uninitialized variable')}return v};const truth=v=>{if(typeof v!=='boolean')fail('TYPE_MISMATCH','Boolean condition required');return v};const finite=(v,l,c)=>{if(!Number.isFinite(v)){line=l;column=c;fail('OVERFLOW','Numeric overflow')}return v};const divide=(op,a,b,l,c)=>{if(b===0){line=l;column=c;fail('DIV_ZERO','Division by zero')}return finite(op==='/'?a/b:op==='DIV'?Math.trunc(a/b):a-Math.trunc(a/b)*b,l,c)};`;
   const vars = cells.map((_, i) => `let v${i}=cells[${i}].value;`).join("");
   const save = cells.map((_, i) => `cells[${i}].value=v${i};`).join("");
   const compiled = new Function(
@@ -121,7 +127,7 @@ export function optimizeLoop(node: Node, context: FastContext): boolean {
       code +
       "}finally{" +
       save +
-      "context.steps=steps;context.line=line;}",
+      "context.steps=steps;context.line=line;context.column=column;}",
   );
   compiled(cells, context);
   return true;

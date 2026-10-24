@@ -27,7 +27,15 @@ export function format(source: string, id: DialectId) {
         current = (frame?.base ?? 0) + size;
       } else if (
         stack.at(-1)?.kind === "CASE" &&
-        /^[^:]+:/.test(t) &&
+        (() => {
+          try {
+            return lex(t).some(
+              (token) => token.kind === "symbol" && token.text === ":",
+            );
+          } catch {
+            return false;
+          }
+        })() &&
         !/^DECLARE\b/i.test(t)
       ) {
         spaces = stack.at(-1)!.base + 2;

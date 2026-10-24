@@ -1,0 +1,1157 @@
+TAP version 13
+# Subtest: M1 arithmetic, precedence, constants, case-insensitive variables
+ok 1 - M1 arithmetic, precedence, constants, case-insensitive variables
+  ---
+  duration_ms: 28.6699
+  type: 'test'
+  ...
+# Subtest: M1 IF, FOR, WHILE, REPEAT and INPUT
+ok 2 - M1 IF, FOR, WHILE, REPEAT and INPUT
+  ---
+  duration_ms: 10.3175
+  type: 'test'
+  ...
+# Subtest: M1 CASE first match, range, otherwise
+ok 3 - M1 CASE first match, range, otherwise
+  ---
+  duration_ms: 3.0191
+  type: 'test'
+  ...
+# Subtest: M1 array lower bounds, deep copy, two dimensions
+ok 4 - M1 array lower bounds, deep copy, two dimensions
+  ---
+  duration_ms: 4.0549
+  type: 'test'
+  ...
+# Subtest: M1 procedures and functions
+ok 5 - M1 procedures and functions
+  ---
+  duration_ms: 17.0098
+  type: 'test'
+  ...
+# Subtest: M1 builtins and power
+ok 6 - M1 builtins and power
+  ---
+  duration_ms: 7.9403
+  type: 'test'
+  ...
+# Subtest: M1 errors: declaration, constant, type, bounds, numeric syntax
+ok 7 - M1 errors: declaration, constant, type, bounds, numeric syntax
+  ---
+  duration_ms: 17.5513
+  type: 'test'
+  ...
+# Subtest: M1 dialect restrictions and block errors
+ok 8 - M1 dialect restrictions and block errors
+  ---
+  duration_ms: 5.1018
+  type: 'test'
+  ...
+# Subtest: M1 PDF normalization and short circuit
+ok 9 - M1 PDF normalization and short circuit
+  ---
+  duration_ms: 2.6688
+  type: 'test'
+  ...
+# Subtest: M2 records are deep copied
+ok 10 - M2 records are deep copied
+  ---
+  duration_ms: 3.7665
+  type: 'test'
+  ...
+# Subtest: M2 BYREF aliases original cell, BYVAL copies
+ok 11 - M2 BYREF aliases original cell, BYVAL copies
+  ---
+  duration_ms: 2.5915
+  type: 'test'
+  ...
+# Subtest: M2 Insert strings and conversion
+ok 12 - M2 Insert strings and conversion
+  ---
+  duration_ms: 4.2123
+  type: 'test'
+  ...
+# Subtest: M2 dates versus division and CHAR/STRING rules
+ok 13 - M2 dates versus division and CHAR/STRING rules
+  ---
+  duration_ms: 6.5273
+  type: 'test'
+  ...
+# Subtest: M2 invalid date, EOF mode, builtin validation
+ok 14 - M2 invalid date, EOF mode, builtin validation
+  ---
+  duration_ms: 3.7921
+  type: 'test'
+  ...
+# Subtest: M2 virtual text files and EOF
+ok 15 - M2 virtual text files and EOF
+  ---
+  duration_ms: 2.3536
+  type: 'test'
+  ...
+# Subtest: M3 enums, pointers and sets
+ok 16 - M3 enums, pointers and sets
+  ---
+  duration_ms: 4.0681
+  type: 'test'
+  ...
+# Subtest: M3 recursion
+ok 17 - M3 recursion
+  ---
+  duration_ms: 3.4495
+  type: 'test'
+  ...
+# Subtest: M3 OOP inheritance, constructors, methods and private fields
+ok 18 - M3 OOP inheritance, constructors, methods and private fields
+  ---
+  duration_ms: 3.5575
+  type: 'test'
+  ...
+# Subtest: M3 random record file retains value copies
+ok 19 - M3 random record file retains value copies
+  ---
+  duration_ms: 1.6248
+  type: 'test'
+  ...
+# Subtest: M4 step suspension, trace snapshot and flowchart edges
+ok 20 - M4 step suspension, trace snapshot and flowchart edges
+  ---
+  duration_ms: 6.5718
+  type: 'test'
+  ...
+# Subtest: M4 limit prevents infinite empty loops
+ok 21 - M4 limit prevents infinite empty loops
+  ---
+  duration_ms: 1.0165
+  type: 'test'
+  ...
+# Subtest: semantic multiple errors, REAL division assignment and return paths
+ok 22 - semantic multiple errors, REAL division assignment and return paths
+  ---
+  duration_ms: 1.7672
+  type: 'test'
+  ...
+# Subtest: formatter keeps statement order and comments
+ok 23 - formatter keeps statement order and comments
+  ---
+  duration_ms: 1.4193
+  type: 'test'
+  ...
+# Subtest: seed deterministic and positive bounds enforced
+ok 24 - seed deterministic and positive bounds enforced
+  ---
+  duration_ms: 4.2951
+  type: 'test'
+  ...
+# Subtest: parser malformed-input recovery does not hang
+ok 25 - parser malformed-input recovery does not hang
+  ---
+  duration_ms: 2.8177
+  type: 'test'
+  ...
+# Subtest: runtime REAL type preserved across variables and division
+ok 26 - runtime REAL type preserved across variables and division
+  ---
+  duration_ms: 30.0831
+  type: 'test'
+  ...
+# Subtest: CALL/procedure/function separation and constant BYREF protection
+ok 27 - CALL/procedure/function separation and constant BYREF protection
+  ---
+  duration_ms: 11.3416
+  type: 'test'
+  ...
+# Subtest: PRIVATE access denied externally and in derived class
+ok 28 - PRIVATE access denied externally and in derived class
+  ---
+  duration_ms: 11.7886
+  type: 'test'
+  ...
+# Subtest: pointer dereference in arithmetic and comparisons
+ok 29 - pointer dereference in arithmetic and comparisons
+  ---
+  duration_ms: 11.4745
+  type: 'test'
+  ...
+# Subtest: two-dimensional array bounds and shape errors
+ok 30 - two-dimensional array bounds and shape errors
+  ---
+  duration_ms: 6.7482
+  type: 'test'
+  ...
+# Subtest: file mode violations, duplicate open and unclosed warning
+ok 31 - file mode violations, duplicate open and unclosed warning
+  ---
+  duration_ms: 4.2367
+  type: 'test'
+  ...
+# Subtest: record random-file values survive structured-clone persistence
+ok 32 - record random-file values survive structured-clone persistence
+  ---
+  duration_ms: 4.4742
+  type: 'test'
+  ...
+# Subtest: TODAY injectable clock; negative INT/DIV/MOD policies
+ok 33 - TODAY injectable clock; negative INT/DIV/MOD policies
+  ---
+  duration_ms: 2.5228
+  type: 'test'
+  ...
+# Subtest: diagnostic golden contract includes code, line and bilingual message
+ok 34 - diagnostic golden contract includes code, line and bilingual message
+  ---
+  duration_ms: 2.2589
+  type: 'test'
+  ...
+# Subtest: language definition and scoped rename preserve strings/comments
+ok 35 - language definition and scoped rename preserve strings/comments
+  ---
+  duration_ms: 7.0907
+  type: 'test'
+  ...
+# Subtest: parser deterministic fuzz: 1000 malformed token streams do not throw
+ok 36 - parser deterministic fuzz: 1000 malformed token streams do not throw
+  ---
+  duration_ms: 359.914
+  type: 'test'
+  ...
+# Subtest: INPUT validation and recursion limit
+ok 37 - INPUT validation and recursion limit
+  ---
+  duration_ms: 42.345
+  type: 'test'
+  ...
+# Subtest: Guide §4.1 official DEFINE syntax and §10.1 method statement
+ok 38 - Guide §4.1 official DEFINE syntax and §10.1 method statement
+  ---
+  duration_ms: 5.0891
+  type: 'test'
+  ...
+# Subtest: escaped quotes do not turn string content into a line comment
+ok 39 - escaped quotes do not turn string content into a line comment
+  ---
+  duration_ms: 18.7745
+  type: 'test'
+  ...
+# Subtest: CASE branch bodies can output strings containing colons
+ok 40 - CASE branch bodies can output strings containing colons
+  ---
+  duration_ms: 5.4216
+  type: 'test'
+  ...
+# Subtest: procedures reject a RETURNS clause
+ok 41 - procedures reject a RETURNS clause
+  ---
+  duration_ms: 2.7451
+  type: 'test'
+  ...
+# Subtest: write operations diagnose nonassignable expression targets before execution
+ok 42 - write operations diagnose nonassignable expression targets before execution
+  ---
+  duration_ms: 10.5073
+  type: 'test'
+  ...
+# Subtest: FOR cannot overwrite a constant loop variable
+ok 43 - FOR cannot overwrite a constant loop variable
+  ---
+  duration_ms: 2.0839
+  type: 'test'
+  ...
+# Subtest: CASE bodies receive declaration, identifier and type validation
+ok 44 - CASE bodies receive declaration, identifier and type validation
+  ---
+  duration_ms: 5.2217
+  type: 'test'
+  ...
+# Subtest: record fields reject duplicate names and reserved identifiers
+ok 45 - record fields reject duplicate names and reserved identifiers
+  ---
+  duration_ms: 2.2565
+  type: 'test'
+  ...
+# Subtest: enum members reject duplicate, empty and reserved identifiers
+ok 46 - enum members reject duplicate, empty and reserved identifiers
+  ---
+  duration_ms: 1.5246
+  type: 'test'
+  ...
+# Subtest: a class superclass must be a class rather than a record
+ok 47 - a class superclass must be a class rather than a record
+  ---
+  duration_ms: 1.5405
+  type: 'test'
+  ...
+# Subtest: an unconditional return in REPEAT satisfies a function return path
+ok 48 - an unconditional return in REPEAT satisfies a function return path
+  ---
+  duration_ms: 5.1586
+  type: 'test'
+  ...
+# Subtest: nested definitions produce a diagnostic instead of being silently ignored
+ok 49 - nested definitions produce a diagnostic instead of being silently ignored
+  ---
+  duration_ms: 1.0847
+  type: 'test'
+  ...
+# Subtest: CASE rejects reversed or multiply chained range endpoints
+ok 50 - CASE rejects reversed or multiply chained range endpoints
+  ---
+  duration_ms: 1.3094
+  type: 'test'
+  ...
+# Subtest: incremental dependencies include enum members and implicit object variables
+ok 51 - incremental dependencies include enum members and implicit object variables
+  ---
+  duration_ms: 6.1101
+  type: 'test'
+  ...
+# Subtest: editing an earlier row remaps later quick fix edits
+ok 52 - editing an earlier row remaps later quick fix edits
+  ---
+  duration_ms: 2.488
+  type: 'test'
+  ...
+# Subtest: editing normalized punctuation retains a safe whole-document quick fix
+ok 53 - editing normalized punctuation retains a safe whole-document quick fix
+  ---
+  duration_ms: 1.3665
+  type: 'test'
+  ...
+# Subtest: signature parameter index excludes array subscript commas
+ok 54 - signature parameter index excludes array subscript commas
+  ---
+  duration_ms: 1.2037
+  type: 'test'
+  ...
+# Subtest: trace repeated values are compared with the preceding visible filtered row
+ok 55 - trace repeated values are compared with the preceding visible filtered row
+  ---
+  duration_ms: 3.21
+  type: 'test'
+  ...
+# Subtest: explicit negative DIV/MOD, INT and half-even ROUND policies
+ok 56 - explicit negative DIV/MOD, INT and half-even ROUND policies
+  ---
+  duration_ms: 26.4627
+  type: 'test'
+  ...
+# Subtest: short circuit, bound evaluation and output formatting policies apply
+ok 57 - short circuit, bound evaluation and output formatting policies apply
+  ---
+  duration_ms: 15.5176
+  type: 'test'
+  ...
+# Subtest: filename policy is explicit; initial virtual files preserve case-insensitive reads
+ok 58 - filename policy is explicit; initial virtual files preserve case-insensitive reads
+  ---
+  duration_ms: 2.0598
+  type: 'test'
+  ...
+# Subtest: fast execution returns the same result and instruction limits remain effective
+ok 59 - fast execution returns the same result and instruction limits remain effective
+  ---
+  duration_ms: 11.6678
+  type: 'test'
+  ...
+# Subtest: set value equality deduplicates date/enum values and pointer equality compares cells
+ok 60 - set value equality deduplicates date/enum values and pointer equality compares cells
+  ---
+  duration_ms: 3.5254
+  type: 'test'
+  ...
+# Subtest: logical precedence is a real dialect setting and native AST semantics are explicit
+ok 61 - logical precedence is a real dialect setting and native AST semantics are explicit
+  ---
+  duration_ms: 1.2317
+  type: 'test'
+  ...
+# Subtest: BYREF array types resolve formal bound names without losing the alias
+ok 62 - BYREF array types resolve formal bound names without losing the alias
+  ---
+  duration_ms: 5.5748
+  type: 'test'
+  ...
+# Subtest: fast arithmetic checks intermediate overflow before comparisons or cancellation
+ok 63 - fast arithmetic checks intermediate overflow before comparisons or cancellation
+  ---
+  duration_ms: 39.886
+  type: 'test'
+  ...
+# Subtest: fast runtime diagnostics retain the failing expression's source position
+ok 64 - fast runtime diagnostics retain the failing expression's source position
+  ---
+  duration_ms: 5.1698
+  type: 'test'
+  ...
+# Subtest: REPEAT fast execution preserves instruction counts and exact resource limits
+ok 65 - REPEAT fast execution preserves instruction counts and exact resource limits
+  ---
+  duration_ms: 4.9433
+  type: 'test'
+  ...
+# Subtest: fast loop limit failures preserve the same completed assignments
+ok 66 - fast loop limit failures preserve the same completed assignments
+  ---
+  duration_ms: 6.845
+  type: 'test'
+  ...
+# Subtest: fast execution preserves shared BYREF cells under different parameter names
+ok 67 - fast execution preserves shared BYREF cells under different parameter names
+  ---
+  duration_ms: 7.8222
+  type: 'test'
+  ...
+# Subtest: case-insensitive file dictionaries do not expose inherited object properties
+ok 68 - case-insensitive file dictionaries do not expose inherited object properties
+  ---
+  duration_ms: 3.7173
+  type: 'test'
+  ...
+# Subtest: numeric conversion rejects non-finite numeric text and IS_NUM agrees
+ok 69 - numeric conversion rejects non-finite numeric text and IS_NUM agrees
+  ---
+  duration_ms: 6.3521
+  type: 'test'
+  ...
+# Subtest: NUM_TO_STR emits decimal strings accepted by STR_TO_NUM at small and large magnitudes
+ok 70 - NUM_TO_STR emits decimal strings accepted by STR_TO_NUM at small and large magnitudes
+  ---
+  duration_ms: 6.1427
+  type: 'test'
+  ...
+# Subtest: ROUND uses decimal ties including negatives and the chosen half-even policy
+ok 71 - ROUND uses decimal ties including negatives and the chosen half-even policy
+  ---
+  duration_ms: 2.5791
+  type: 'test'
+  ...
+# Subtest: a loop can execute its own declarations again without hiding distinct duplicates
+ok 72 - a loop can execute its own declarations again without hiding distinct duplicates
+  ---
+  duration_ms: 5.7392
+  type: 'test'
+  ...
+# Subtest: WRITEFILE applies the same boolean and REAL output policies as OUTPUT
+ok 73 - WRITEFILE applies the same boolean and REAL output policies as OUTPUT
+  ---
+  duration_ms: 1.2786
+  type: 'test'
+  ...
+# Subtest: SUPER selects the base implementation while THIS keeps the actual object's dynamic type
+ok 74 - SUPER selects the base implementation while THIS keeps the actual object's dynamic type
+  ---
+  duration_ms: 8.2382
+  type: 'test'
+  ...
+# Subtest: eachIteration FOR bounds are evaluated exactly once for every condition test
+ok 75 - eachIteration FOR bounds are evaluated exactly once for every condition test
+  ---
+  duration_ms: 12.8666
+  type: 'test'
+  ...
+# Subtest: full type propagation through fields, array indexes, functions and pointers
+ok 76 - full type propagation through fields, array indexes, functions and pointers
+  ---
+  duration_ms: 26.3999
+  type: 'test'
+  ...
+# Subtest: call type, mode, arity and all return paths checked before execution
+ok 77 - call type, mode, arity and all return paths checked before execution
+  ---
+  duration_ms: 7.6267
+  type: 'test'
+  ...
+# Subtest: official IGCSE underscore, APPEND, and parameter ceiling enforced
+ok 78 - official IGCSE underscore, APPEND, and parameter ceiling enforced
+  ---
+  duration_ms: 3.0733
+  type: 'test'
+  ...
+# Subtest: cyclic records and inheritance diagnosed without host recursion crash
+ok 79 - cyclic records and inheritance diagnosed without host recursion crash
+  ---
+  duration_ms: 2.7159
+  type: 'test'
+  ...
+# Subtest: record/array copy rebases equal-size bounds without sharing values
+ok 80 - record/array copy rebases equal-size bounds without sharing values
+  ---
+  duration_ms: 14.085
+  type: 'test'
+  ...
+# Subtest: enum ordinal arithmetic and strong enum typing
+ok 81 - enum ordinal arithmetic and strong enum typing
+  ---
+  duration_ms: 5.3809
+  type: 'test'
+  ...
+# Subtest: PDF normalization preserves literal contents and comment text
+ok 82 - PDF normalization preserves literal contents and comment text
+  ---
+  duration_ms: 0.7587
+  type: 'test'
+  ...
+# Subtest: AST ranges reference original source with <- and indentation
+ok 83 - AST ranges reference original source with <- and indentation
+  ---
+  duration_ms: 1.1835
+  type: 'test'
+  ...
+# Subtest: missing nested terminators recover at enclosing block and continue diagnostics
+ok 84 - missing nested terminators recover at enclosing block and continue diagnostics
+  ---
+  duration_ms: 1.7121
+  type: 'test'
+  ...
+# Subtest: Insert RAND requires INTEGER and DAYINDEX Sunday=1
+ok 85 - Insert RAND requires INTEGER and DAYINDEX Sunday=1
+  ---
+  duration_ms: 5.3072
+  type: 'test'
+  ...
+# Subtest: IGCSE parameterless function and multiline expressions preserve exact spans
+ok 86 - IGCSE parameterless function and multiline expressions preserve exact spans
+  ---
+  duration_ms: 4.0597
+  type: 'test'
+  ...
+# Subtest: keyword and terminator code actions produce parsable corrected source
+ok 87 - keyword and terminator code actions produce parsable corrected source
+  ---
+  duration_ms: 1.383
+  type: 'test'
+  ...
+# Subtest: deep hostile expressions and blocks return diagnostics instead of host errors
+ok 88 - deep hostile expressions and blocks return diagnostics instead of host errors
+  ---
+  duration_ms: 181.6134
+  type: 'test'
+  ...
+# Subtest: IGCSE OTHERWISE has no colon and CASE never tests later cases after a hit
+ok 89 - IGCSE OTHERWISE has no colon and CASE never tests later cases after a hit
+  ---
+  duration_ms: 5.5363
+  type: 'test'
+  ...
+# Subtest: Guide NEW creates a typed object without a separate DECLARE
+ok 90 - Guide NEW creates a typed object without a separate DECLARE
+  ---
+  duration_ms: 7.1791
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS LEFT: positive example
+ok 91 - spec 9618-AS LEFT: positive example
+  ---
+  duration_ms: 17.2879
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS LEFT: negative arity and diagnostic golden
+ok 92 - spec 9618-AS LEFT: negative arity and diagnostic golden
+  ---
+  duration_ms: 3.1789
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS LEFT: negative parameter type
+ok 93 - spec 9618-AS LEFT: negative parameter type
+  ---
+  duration_ms: 1.7269
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS RIGHT: positive example
+ok 94 - spec 9618-AS RIGHT: positive example
+  ---
+  duration_ms: 0.9268
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS RIGHT: negative arity and diagnostic golden
+ok 95 - spec 9618-AS RIGHT: negative arity and diagnostic golden
+  ---
+  duration_ms: 1.9334
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS RIGHT: negative parameter type
+ok 96 - spec 9618-AS RIGHT: negative parameter type
+  ---
+  duration_ms: 1.3802
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS MID: positive example
+ok 97 - spec 9618-AS MID: positive example
+  ---
+  duration_ms: 2.0315
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS MID: negative arity and diagnostic golden
+ok 98 - spec 9618-AS MID: negative arity and diagnostic golden
+  ---
+  duration_ms: 1.5126
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS MID: negative parameter type
+ok 99 - spec 9618-AS MID: negative parameter type
+  ---
+  duration_ms: 1.3714
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS LENGTH: positive example
+ok 100 - spec 9618-AS LENGTH: positive example
+  ---
+  duration_ms: 4.0634
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS LENGTH: negative arity and diagnostic golden
+ok 101 - spec 9618-AS LENGTH: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.6655
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS LENGTH: negative parameter type
+ok 102 - spec 9618-AS LENGTH: negative parameter type
+  ---
+  duration_ms: 0.5089
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS TO_UPPER: positive example
+ok 103 - spec 9618-AS TO_UPPER: positive example
+  ---
+  duration_ms: 0.5879
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS TO_UPPER: negative arity and diagnostic golden
+ok 104 - spec 9618-AS TO_UPPER: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.6701
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS TO_UPPER: negative parameter type
+ok 105 - spec 9618-AS TO_UPPER: negative parameter type
+  ---
+  duration_ms: 0.7151
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS TO_LOWER: positive example
+ok 106 - spec 9618-AS TO_LOWER: positive example
+  ---
+  duration_ms: 0.8961
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS TO_LOWER: negative arity and diagnostic golden
+ok 107 - spec 9618-AS TO_LOWER: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.5952
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS TO_LOWER: negative parameter type
+ok 108 - spec 9618-AS TO_LOWER: negative parameter type
+  ---
+  duration_ms: 0.4814
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS NUM_TO_STR: positive example
+ok 109 - spec 9618-AS NUM_TO_STR: positive example
+  ---
+  duration_ms: 1.0954
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS NUM_TO_STR: negative arity and diagnostic golden
+ok 110 - spec 9618-AS NUM_TO_STR: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.5467
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS NUM_TO_STR: negative parameter type
+ok 111 - spec 9618-AS NUM_TO_STR: negative parameter type
+  ---
+  duration_ms: 0.5416
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS STR_TO_NUM: positive example
+ok 112 - spec 9618-AS STR_TO_NUM: positive example
+  ---
+  duration_ms: 0.7127
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS STR_TO_NUM: negative arity and diagnostic golden
+ok 113 - spec 9618-AS STR_TO_NUM: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.4643
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS STR_TO_NUM: negative parameter type
+ok 114 - spec 9618-AS STR_TO_NUM: negative parameter type
+  ---
+  duration_ms: 0.5032
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS IS_NUM: positive example
+ok 115 - spec 9618-AS IS_NUM: positive example
+  ---
+  duration_ms: 1.544
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS IS_NUM: negative arity and diagnostic golden
+ok 116 - spec 9618-AS IS_NUM: negative arity and diagnostic golden
+  ---
+  duration_ms: 1.4778
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS IS_NUM: negative parameter type
+ok 117 - spec 9618-AS IS_NUM: negative parameter type
+  ---
+  duration_ms: 0.7102
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS ASC: positive example
+ok 118 - spec 9618-AS ASC: positive example
+  ---
+  duration_ms: 0.7492
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS ASC: negative arity and diagnostic golden
+ok 119 - spec 9618-AS ASC: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.754
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS ASC: negative parameter type
+ok 120 - spec 9618-AS ASC: negative parameter type
+  ---
+  duration_ms: 0.576
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS CHR: positive example
+ok 121 - spec 9618-AS CHR: positive example
+  ---
+  duration_ms: 0.6879
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS CHR: negative arity and diagnostic golden
+ok 122 - spec 9618-AS CHR: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.5909
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS CHR: negative parameter type
+ok 123 - spec 9618-AS CHR: negative parameter type
+  ---
+  duration_ms: 0.4745
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS INT: positive example
+ok 124 - spec 9618-AS INT: positive example
+  ---
+  duration_ms: 1.6311
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS INT: negative arity and diagnostic golden
+ok 125 - spec 9618-AS INT: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.83
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS INT: negative parameter type
+ok 126 - spec 9618-AS INT: negative parameter type
+  ---
+  duration_ms: 1.2819
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS RAND: positive example
+ok 127 - spec 9618-AS RAND: positive example
+  ---
+  duration_ms: 1.0669
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS RAND: negative arity and diagnostic golden
+ok 128 - spec 9618-AS RAND: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.8702
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS RAND: negative parameter type
+ok 129 - spec 9618-AS RAND: negative parameter type
+  ---
+  duration_ms: 0.6043
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS DAY: positive example
+ok 130 - spec 9618-AS DAY: positive example
+  ---
+  duration_ms: 4.8142
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS DAY: negative arity and diagnostic golden
+ok 131 - spec 9618-AS DAY: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.5809
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS DAY: negative parameter type
+ok 132 - spec 9618-AS DAY: negative parameter type
+  ---
+  duration_ms: 0.556
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS MONTH: positive example
+ok 133 - spec 9618-AS MONTH: positive example
+  ---
+  duration_ms: 0.9982
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS MONTH: negative arity and diagnostic golden
+ok 134 - spec 9618-AS MONTH: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.4983
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS MONTH: negative parameter type
+ok 135 - spec 9618-AS MONTH: negative parameter type
+  ---
+  duration_ms: 0.4887
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS YEAR: positive example
+ok 136 - spec 9618-AS YEAR: positive example
+  ---
+  duration_ms: 0.7653
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS YEAR: negative arity and diagnostic golden
+ok 137 - spec 9618-AS YEAR: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.425
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS YEAR: negative parameter type
+ok 138 - spec 9618-AS YEAR: negative parameter type
+  ---
+  duration_ms: 0.3686
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS DAYINDEX: positive example
+ok 139 - spec 9618-AS DAYINDEX: positive example
+  ---
+  duration_ms: 0.7442
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS DAYINDEX: negative arity and diagnostic golden
+ok 140 - spec 9618-AS DAYINDEX: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.4866
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS DAYINDEX: negative parameter type
+ok 141 - spec 9618-AS DAYINDEX: negative parameter type
+  ---
+  duration_ms: 0.5204
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS SETDATE: positive example
+ok 142 - spec 9618-AS SETDATE: positive example
+  ---
+  duration_ms: 0.6993
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS SETDATE: negative arity and diagnostic golden
+ok 143 - spec 9618-AS SETDATE: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.4477
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS SETDATE: negative parameter type
+ok 144 - spec 9618-AS SETDATE: negative parameter type
+  ---
+  duration_ms: 1.6052
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS TODAY: positive example
+ok 145 - spec 9618-AS TODAY: positive example
+  ---
+  duration_ms: 0.3281
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS TODAY: negative arity and diagnostic golden
+ok 146 - spec 9618-AS TODAY: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.2417
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS UCASE: positive example
+ok 147 - spec 9618-AS UCASE: positive example
+  ---
+  duration_ms: 0.2608
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS UCASE: negative arity and diagnostic golden
+ok 148 - spec 9618-AS UCASE: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.1982
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS UCASE: negative parameter type
+ok 149 - spec 9618-AS UCASE: negative parameter type
+  ---
+  duration_ms: 0.2381
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS LCASE: positive example
+ok 150 - spec 9618-AS LCASE: positive example
+  ---
+  duration_ms: 0.255
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS LCASE: negative arity and diagnostic golden
+ok 151 - spec 9618-AS LCASE: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.1976
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS LCASE: negative parameter type
+ok 152 - spec 9618-AS LCASE: negative parameter type
+  ---
+  duration_ms: 0.192
+  type: 'test'
+  ...
+# Subtest: spec 0478 SUBSTRING: positive example
+ok 153 - spec 0478 SUBSTRING: positive example
+  ---
+  duration_ms: 0.3197
+  type: 'test'
+  ...
+# Subtest: spec 0478 SUBSTRING: negative arity and diagnostic golden
+ok 154 - spec 0478 SUBSTRING: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.2601
+  type: 'test'
+  ...
+# Subtest: spec 0478 SUBSTRING: negative parameter type
+ok 155 - spec 0478 SUBSTRING: negative parameter type
+  ---
+  duration_ms: 0.2632
+  type: 'test'
+  ...
+# Subtest: spec 0478 ROUND: positive example
+ok 156 - spec 0478 ROUND: positive example
+  ---
+  duration_ms: 0.5016
+  type: 'test'
+  ...
+# Subtest: spec 0478 ROUND: negative arity and diagnostic golden
+ok 157 - spec 0478 ROUND: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.3987
+  type: 'test'
+  ...
+# Subtest: spec 0478 ROUND: negative parameter type
+ok 158 - spec 0478 ROUND: negative parameter type
+  ---
+  duration_ms: 0.7806
+  type: 'test'
+  ...
+# Subtest: spec 0478 RANDOM: positive example
+ok 159 - spec 0478 RANDOM: positive example
+  ---
+  duration_ms: 1.6064
+  type: 'test'
+  ...
+# Subtest: spec 0478 RANDOM: negative arity and diagnostic golden
+ok 160 - spec 0478 RANDOM: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.7752
+  type: 'test'
+  ...
+# Subtest: spec 0478 DIV: positive example
+ok 161 - spec 0478 DIV: positive example
+  ---
+  duration_ms: 0.6308
+  type: 'test'
+  ...
+# Subtest: spec 0478 DIV: negative arity and diagnostic golden
+ok 162 - spec 0478 DIV: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.5439
+  type: 'test'
+  ...
+# Subtest: spec 0478 DIV: negative parameter type
+ok 163 - spec 0478 DIV: negative parameter type
+  ---
+  duration_ms: 0.6196
+  type: 'test'
+  ...
+# Subtest: spec 0478 MOD: positive example
+ok 164 - spec 0478 MOD: positive example
+  ---
+  duration_ms: 0.7021
+  type: 'test'
+  ...
+# Subtest: spec 0478 MOD: negative arity and diagnostic golden
+ok 165 - spec 0478 MOD: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.6026
+  type: 'test'
+  ...
+# Subtest: spec 0478 MOD: negative parameter type
+ok 166 - spec 0478 MOD: negative parameter type
+  ---
+  duration_ms: 0.6189
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS EOF: positive example
+ok 167 - spec 9618-AS EOF: positive example
+  ---
+  duration_ms: 2.3081
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS EOF: negative arity and diagnostic golden
+ok 168 - spec 9618-AS EOF: negative arity and diagnostic golden
+  ---
+  duration_ms: 0.6199
+  type: 'test'
+  ...
+# Subtest: spec 9618-AS EOF: negative parameter type
+ok 169 - spec 9618-AS EOF: negative parameter type
+  ---
+  duration_ms: 0.7465
+  type: 'test'
+  ...
+# Subtest: spec rule CHAR widening positive / negative / diagnostic
+ok 170 - spec rule CHAR widening positive / negative / diagnostic
+  ---
+  duration_ms: 7.3693
+  type: 'test'
+  ...
+# Subtest: spec rule case-sensitive comparison positive / negative / diagnostic
+ok 171 - spec rule case-sensitive comparison positive / negative / diagnostic
+  ---
+  duration_ms: 7.4085
+  type: 'test'
+  ...
+# Subtest: spec rule DATE/division separation positive / negative / diagnostic
+ok 172 - spec rule DATE/division separation positive / negative / diagnostic
+  ---
+  duration_ms: 1.6921
+  type: 'test'
+  ...
+# Subtest: spec rule constant immutability positive / negative / diagnostic
+ok 173 - spec rule constant immutability positive / negative / diagnostic
+  ---
+  duration_ms: 2.5986
+  type: 'test'
+  ...
+# Subtest: spec rule one-based MID boundary positive / negative / diagnostic
+ok 174 - spec rule one-based MID boundary positive / negative / diagnostic
+  ---
+  duration_ms: 1.46
+  type: 'test'
+  ...
+# Subtest: trace policies include module, loop and branch events with stable snapshots
+ok 175 - trace policies include module, loop and branch events with stable snapshots
+  ---
+  duration_ms: 26.7979
+  type: 'test'
+  ...
+# Subtest: trace fill-in marks each cell and CSV/Excel preserve complex values
+ok 176 - trace fill-in marks each cell and CSV/Excel preserve complex values
+  ---
+  duration_ms: 232.2154
+  type: 'test'
+  ...
+# Subtest: module and method flowcharts include return edges and post-condition loops
+ok 177 - module and method flowcharts include return edges and post-condition loops
+  ---
+  duration_ms: 3.8518
+  type: 'test'
+  ...
+# Subtest: class formatting retains method scopes and two-space ELSE/CASE clauses
+ok 178 - class formatting retains method scopes and two-space ELSE/CASE clauses
+  ---
+  duration_ms: 2.2034
+  type: 'test'
+  ...
+# Subtest: field rename handles two record types and preserves unrelated bindings
+ok 179 - field rename handles two record types and preserves unrelated bindings
+  ---
+  duration_ms: 10.547
+  type: 'test'
+  ...
+# Subtest: rename rejects variable capture across scopes
+ok 180 - rename rejects variable capture across scopes
+  ---
+  duration_ms: 3.623
+  type: 'test'
+  ...
+# Subtest: incremental diagnostics update only edited unit and invalidate declarations
+ok 181 - incremental diagnostics update only edited unit and invalidate declarations
+  ---
+  duration_ms: 4.7291
+  type: 'test'
+  ...
+# Subtest: incremental analysis retains transitive custom types and invalidates structural edits
+ok 182 - incremental analysis retains transitive custom types and invalidates structural edits
+  ---
+  duration_ms: 4.0377
+  type: 'test'
+  ...
+# Subtest: member completions respect private access and signature help tracks commas
+ok 183 - member completions respect private access and signature help tracks commas
+  ---
+  duration_ms: 14.6404
+  type: 'test'
+  ...
+# Subtest: blocked localStorage still supports session edits and reports failure once
+ok 184 - blocked localStorage still supports session edits and reports failure once
+  ---
+  duration_ms: 2.2321
+  type: 'test'
+  ...
+# Subtest: quota errors preserve the newest session source rather than the last disk value
+ok 185 - quota errors preserve the newest session source rather than the last disk value
+  ---
+  duration_ms: 0.4753
+  type: 'test'
+  ...
+# Subtest: empty persisted source remains an intentional empty document
+ok 186 - empty persisted source remains an intentional empty document
+  ---
+  duration_ms: 0.3444
+  type: 'test'
+  ...
+# Subtest: invalid persisted settings use valid choices and integer limits
+ok 187 - invalid persisted settings use valid choices and integer limits
+  ---
+  duration_ms: 0.51
+  type: 'test'
+  ...
+# Subtest: malformed persisted policy values cannot silently change runtime semantics
+ok 188 - malformed persisted policy values cannot silently change runtime semantics
+  ---
+  duration_ms: 1.8445
+  type: 'test'
+  ...
+# Subtest: virtual-file backups round-trip text, maps, sets, aliases, undefined and pointer cycles
+ok 189 - virtual-file backups round-trip text, maps, sets, aliases, undefined and pointer cycles
+  ---
+  duration_ms: 1.8955
+  type: 'test'
+  ...
+# Subtest: restored random-file backup can execute records with arrays, dates, sets and pointers
+ok 190 - restored random-file backup can execute records with arrays, dates, sets and pointers
+  ---
+  duration_ms: 39.9778
+  type: 'test'
+  ...
+# Subtest: invalid backup roots, references and versions are rejected before restoring files
+ok 191 - invalid backup roots, references and versions are rejected before restoring files
+  ---
+  duration_ms: 0.6555
+  type: 'test'
+  ...
+1..191
+# tests 191
+# suites 0
+# pass 191
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1024.429
+

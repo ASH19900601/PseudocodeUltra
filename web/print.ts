@@ -27,11 +27,11 @@ export function printableHTML(source: string, title = "main.pseudo") {
     .join("");
   return `<!doctype html><html lang="zh"><head><meta charset="UTF-8"><title>${escape(title)}</title><style>@page{size:A4;margin:18mm}body{font-family:"Courier New","Liberation Mono",monospace;font-size:10pt;color:#111}h1{font:12pt system-ui;margin-bottom:18pt}table{border-collapse:collapse;width:100%}td{vertical-align:top;padding:1pt 0}pre{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}.number{color:#666;width:30pt;user-select:none}tr{break-inside:avoid}@media screen{body{max-width:210mm;margin:20px auto;padding:25px;border:1px solid #ddd}}</style></head><body><h1>${escape(title)}</h1><table>${rows}</table></body></html>`;
 }
-export function printSource(source: string) {
+export function printSource(source: string, title = "main.pseudo") {
   const popup = window.open("", "_blank");
   if (!popup) throw new Error("请允许打印窗口 / Allow the print window");
   popup.document.open();
-  popup.document.write(printableHTML(source));
+  popup.document.write(printableHTML(source, title));
   popup.document.close();
   popup.focus();
   popup.print();

@@ -19,15 +19,18 @@ export const defaultPolicies: RuntimePolicies = {
   filenameCase: "sensitive",
 };
 export function round(value: number, places: number, half: "away" | "even") {
-  const scale = 10 ** places,
-    x = (Math.abs(value) + Number.EPSILON) * scale;
-  const low = Math.floor(x),
-    fraction = x - low;
-  const result =
-    half === "even" && Math.abs(fraction - 0.5) < 1e-12
-      ? low % 2 === 0
-        ? low
-        : low + 1
-      : Math.floor(x + 0.5);
-  return (Math.sign(value) * result) / scale;
+  // Round the decimal representation, rather than multiplying a binary float.
+  // This preserves ties such as 10.075 and cannot overflow while scaling 1e308.
+  const [mantissa, exponent = "0"] = Math.abs(value).toString().split("e");
+  const [whole, fraction = ""] = mantissa.split(".");
+  const shift = places + Number(exponent) - fraction.length;
+  if (shift >= 0) return value;
+  const digits = BigInt(whole + fraction),
+    divisor = 10n ** BigInt(-shift),
+    low = digits / divisor,
+    remainder = digits % divisor;
+  const up =
+    remainder * 2n > divisor ||
+    (remainder * 2n === divisor && (half === "away" || low % 2n !== 0n));
+  return Math.sign(value) * Number(`${low + (up ? 1n : 0n)}e-${places}`);
 }

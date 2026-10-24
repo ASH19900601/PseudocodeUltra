@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
+import { toolchains, nativeEnvironment, normalizeOutput } from "./helpers";
 import { transpile, type Target } from "../../core/transpile";
 import { run } from "../../core/runtime";
 import type { RuntimePolicies } from "../../core/policies";
@@ -33,33 +34,27 @@ for (const target of ["python", "java", "vb"] as Target[])
         timeout: 60000,
         env: {
           ...process.env,
-          DOTNET_CLI_HOME: "/tmp/dotnet-home",
+          ...nativeEnvironment,
           DOTNET_CLI_TELEMETRY_OPTOUT: "1",
         },
       });
       assert.equal(r.status, 0, r.stdout + r.stderr);
-      return r.stdout;
+      return normalizeOutput(r.stdout);
     };
     if (target === "python") {
       writeFileSync(join(dir, "main.py"), code);
-      assert.equal(exec("python", ["main.py"]), expected);
+      assert.equal(exec(toolchains.python, ["main.py"]), expected);
     } else if (target === "java") {
       writeFileSync(join(dir, "Main.java"), code);
-      exec("java", [
-        "-jar",
-        process.env.ECJ_JAR || "/workspace/.tools/ecj.jar",
-        "-17",
-        "Main.java",
-      ]);
-      assert.equal(exec("java", ["Main"]), expected);
+      exec(toolchains.java, ["-jar", toolchains.ecj, "-17", "Main.java"]);
+      assert.equal(exec(toolchains.java, ["Main"]), expected);
     } else {
       writeFileSync(join(dir, "Program.vb"), code);
       writeFileSync(
         join(dir, "export.vbproj"),
         '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>',
       );
-      const dotnet =
-        process.env.DOTNET_BIN || "/workspace/.tools/dotnet/dotnet";
+      const dotnet = toolchains.dotnet;
       exec(dotnet, ["build", "-v:q", "--nologo", "--ignore-failed-sources"]);
       assert.equal(exec(dotnet, ["bin/Debug/net8.0/export.dll"]), expected);
     }

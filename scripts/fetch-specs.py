@@ -2,9 +2,9 @@
 """Fetch reference documents to a local cache; never redistribute PDFs in the repository."""
 import hashlib,json,pathlib,subprocess,os
 root=pathlib.Path(__file__).resolve().parent.parent
-cache=pathlib.Path(os.environ.get('PSEUDO_SPEC_CACHE','/workspace/.cache/pseudo-specs'))
+cache=pathlib.Path(os.environ.get('PSEUDO_SPEC_CACHE',str(root/'.cache'/'pseudo-specs')))
 cache.mkdir(parents=True,exist_ok=True)
-for spec in json.loads((root/'docs/spec-sources.json').read_text())['sources']:
+for spec in json.loads((root/'docs/spec-sources.json').read_text(encoding='utf-8'))['sources']:
     path=cache/spec['filename']
     if not path.exists():
         part=path.with_suffix('.download')

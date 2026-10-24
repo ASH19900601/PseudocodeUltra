@@ -361,13 +361,12 @@ export function transpile(
                 ? `While truth(${expr(n.cond)})`
                 : `while (truth(${expr(n.cond)}))`,
           );
-          statement(call("tick", [String(n.line)]));
           block(n.body);
+          statement(call("tick", [String(n.line)]));
           close("End While");
           break;
         case "repeat":
           open(py ? "while True" : vb ? "Do" : "while (true)");
-          statement(call("tick", [String(n.line)]));
           block(n.body);
           emit(
             py
@@ -376,6 +375,7 @@ export function transpile(
                 ? `If truth(${expr(n.cond)}) Then Exit Do`
                 : `if (truth(${expr(n.cond)})) break;`,
           );
+          statement(call("tick", [String(n.line)]));
           close("Loop");
           break;
         case "for": {
@@ -388,11 +388,12 @@ export function transpile(
             call("whole", [expr(n.from)]),
             vb ? "Double" : "double",
           );
-          declareLocal(
-            b,
-            call("whole", [expr(n.to)]),
-            vb ? "Double" : "double",
-          );
+          if (options.policies?.forBounds !== "eachIteration")
+            declareLocal(
+              b,
+              call("whole", [expr(n.to)]),
+              vb ? "Double" : "double",
+            );
           declareLocal(
             c,
             call("whole", [expr(n.step)]),
@@ -416,8 +417,8 @@ export function transpile(
                 ? "While " + cond
                 : "while (" + cond + ")",
           );
-          statement(call("tick", [String(n.line)]));
           block(n.body);
+          statement(call("tick", [String(n.line)]));
           statement(
             call("put", [
               get(n.name),
@@ -481,7 +482,12 @@ export function transpile(
           statement(call("closeFile", [expr(n.file)]));
           break;
         case "writefile":
-          statement(call("writeFile", [expr(n.file), expr(n.value)]));
+          statement(
+            call("writeFile", [
+              expr(n.file),
+              call("render", [expr(n.value), q(model.type(n.value, env))]),
+            ]),
+          );
           break;
         case "readfile":
           statement(call("readFile", [expr(n.file), cell(n.value)]));

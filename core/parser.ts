@@ -143,11 +143,26 @@ export function parse(raw: string, p: Profile): Program {
     let quoted = "";
     for (let j = 0; j < s.length; j++) {
       if (quoted) {
+        if (s[j] === "\\") {
+          j++;
+          continue;
+        }
         if (s[j] === quoted) quoted = "";
       } else if (s[j] === '"' || s[j] === "'") quoted = s[j];
       else if (s.slice(j, j + 2) === "//") return s.slice(0, j).trim();
     }
     return s.trim();
+  }
+  function isCaseBranch(text: string) {
+    if (/^OTHERWISE\b/i.test(text)) return true;
+    try {
+      return (
+        lex(text).some((t) => t.kind === "symbol" && t.text === ":") &&
+        !/^(DECLARE|PUBLIC|PRIVATE)\b/i.test(text)
+      );
+    } catch {
+      return false;
+    }
   }
   function block(stops: string[] = []): Node[] {
     if (depth >= 128) err("嵌套层数超限 / Block nesting limit", i + 1);
@@ -171,10 +186,7 @@ export function parse(raw: string, p: Profile): Program {
             (s) =>
               u === s ||
               u.startsWith(s + " ") ||
-              (s === "@BRANCH" &&
-                (/^(OTHERWISE|.+?)\s*:/.test(text) ||
-                  /^OTHERWISE\b/i.test(text)) &&
-                !/^DECLARE\b/i.test(text)),
+              (s === "@BRANCH" && isCaseBranch(text)),
           )
         )
           return nodes;
@@ -380,6 +392,11 @@ export function parse(raw: string, p: Profile): Program {
               err("此方言最多 3 个参数 / At most three parameters", line);
             if (fn && !m[4])
               err("函数需要 RETURNS / Return type required", line);
+            if (!fn && m[4])
+              err(
+                "过程不能声明 RETURNS / Procedures cannot have a return type",
+                line,
+              );
             n = {
               ...n,
               kind: fn ? "function" : "procedure",

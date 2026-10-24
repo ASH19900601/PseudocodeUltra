@@ -1,0 +1,151 @@
+{
+  "date": "2026-10-24",
+  "url": "https://www.pseudocode.pro/0478",
+  "method": "Fresh guest Edge; actual Run click; unique completion marker per sample; prior displayed results cleared; actual syllabus recorded including auto-fallback. Eight samples only, no login/paid evaluation.",
+  "results": [
+    {
+      "id": "arithmetic",
+      "syllabus": "0478",
+      "source": "OUTPUT (2 + 3) * 4",
+      "expected": [
+        "20"
+      ],
+      "completed": true,
+      "actual": {
+        "output": "20\n__CHECK_END_0__\n",
+        "diagnostics": "",
+        "syllabus": "0478"
+      },
+      "local": {
+        "output": [
+          "20"
+        ]
+      }
+    },
+    {
+      "id": "decimal-round",
+      "syllabus": "0478",
+      "source": "OUTPUT ROUND(10.075, 2)",
+      "expected": [
+        "10.08"
+      ],
+      "completed": true,
+      "actual": {
+        "output": "10.07\n__CHECK_END_1__\n",
+        "diagnostics": "",
+        "syllabus": "0478"
+      },
+      "local": {
+        "output": [
+          "10.08"
+        ]
+      }
+    },
+    {
+      "id": "igcse-underscore",
+      "syllabus": "0478",
+      "source": "DECLARE My_Var : INTEGER\nMy_Var ← 1\nOUTPUT My_Var",
+      "expectedDiagnostic": "IDENTIFIER",
+      "completed": true,
+      "actual": {
+        "output": "1\n__CHECK_END_2__\n",
+        "diagnostics": "",
+        "syllabus": "0478"
+      },
+      "local": {
+        "diagnostic": "IDENTIFIER",
+        "line": 1,
+        "message": "0478/2210 标识符禁止下划线 / Underscores are not permitted"
+      }
+    },
+    {
+      "id": "real-to-integer",
+      "syllabus": "0478",
+      "source": "DECLARE N : INTEGER\nN ← 1.5\nOUTPUT N",
+      "expectedDiagnostic": "TYPE_MISMATCH",
+      "completed": true,
+      "actual": {
+        "output": "",
+        "diagnostics": "[2:1] Can't assign 1.5 to \"N\" - INTEGER expected, but got REAL\n\nCode run according to ALL syllabus mode - use dropdown at bottom of page to change this, if it's incorrect\n\nDisable errors ❌ or Report bugs 🐞",
+        "syllabus": "ALL"
+      },
+      "local": {
+        "diagnostic": "TYPE_MISMATCH",
+        "line": 2,
+        "message": "不能将 REAL 赋给 INTEGER / Incompatible assignment"
+      }
+    },
+    {
+      "id": "array-value-copy",
+      "syllabus": "9618",
+      "source": "DECLARE A, B : ARRAY[1:2] OF INTEGER\nA[1] ← 7\nA[2] ← 8\nB ← A\nA[1] ← 9\nOUTPUT B[1]",
+      "expected": [
+        "7"
+      ],
+      "completed": true,
+      "actual": {
+        "output": "7\n__CHECK_END_4__\n",
+        "diagnostics": "",
+        "syllabus": "9618"
+      },
+      "local": {
+        "output": [
+          "7"
+        ]
+      }
+    },
+    {
+      "id": "char-comparison",
+      "syllabus": "9618",
+      "source": "OUTPUT \"Program\" = \"program\"",
+      "expected": [
+        "FALSE"
+      ],
+      "completed": true,
+      "actual": {
+        "output": "FALSE\n__CHECK_END_5__\n",
+        "diagnostics": "",
+        "syllabus": "9618"
+      },
+      "local": {
+        "output": [
+          "FALSE"
+        ]
+      }
+    },
+    {
+      "id": "as-power",
+      "syllabus": "9618",
+      "source": "OUTPUT 2 ^ 3",
+      "expectedDiagnostic": "DIALECT",
+      "completed": true,
+      "actual": {
+        "output": "8\n__CHECK_END_6__\n",
+        "diagnostics": "",
+        "syllabus": "9618"
+      },
+      "local": {
+        "diagnostic": "PARSE_EXPR",
+        "line": 1,
+        "message": "多余内容 / Unexpected 3"
+      }
+    },
+    {
+      "id": "divide-zero",
+      "syllabus": "0478",
+      "source": "OUTPUT 1 / 0",
+      "expectedDiagnostic": "DIV_ZERO",
+      "completed": true,
+      "actual": {
+        "output": "Infinity\n__CHECK_END_7__\n",
+        "diagnostics": "",
+        "syllabus": "0478"
+      },
+      "local": {
+        "diagnostic": "DIV_ZERO",
+        "line": 1,
+        "message": "不能除以零 / Division by zero"
+      }
+    }
+  ]
+}

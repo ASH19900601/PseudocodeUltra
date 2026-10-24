@@ -1,0 +1,269 @@
+TAP version 13
+# Subtest: M4 native python: formal-bounds-case-return-and-value-equality
+ok 1 - M4 native python: formal-bounds-case-return-and-value-equality
+  ---
+  duration_ms: 144.3329
+  type: 'test'
+  ...
+# Subtest: M4 native java: formal-bounds-case-return-and-value-equality
+ok 2 - M4 native java: formal-bounds-case-return-and-value-equality
+  ---
+  duration_ms: 3860.4102
+  type: 'test'
+  ...
+# Subtest: M4 native vb: formal-bounds-case-return-and-value-equality
+ok 3 - M4 native vb: formal-bounds-case-return-and-value-equality
+  ---
+  duration_ms: 3771.901
+  type: 'test'
+  ...
+# Subtest: M4 native python: private-shadow-and-initializers
+ok 4 - M4 native python: private-shadow-and-initializers
+  ---
+  duration_ms: 116.7352
+  type: 'test'
+  ...
+# Subtest: M4 native java: private-shadow-and-initializers
+ok 5 - M4 native java: private-shadow-and-initializers
+  ---
+  duration_ms: 2515.5052
+  type: 'test'
+  ...
+# Subtest: M4 native vb: private-shadow-and-initializers
+ok 6 - M4 native vb: private-shadow-and-initializers
+  ---
+  duration_ms: 2044.3848
+  type: 'test'
+  ...
+# Subtest: M4 native python: enum-ordinal-array-rebasing
+ok 7 - M4 native python: enum-ordinal-array-rebasing
+  ---
+  duration_ms: 83.0668
+  type: 'test'
+  ...
+# Subtest: M4 native java: enum-ordinal-array-rebasing
+ok 8 - M4 native java: enum-ordinal-array-rebasing
+  ---
+  duration_ms: 2353.2877
+  type: 'test'
+  ...
+# Subtest: M4 native vb: enum-ordinal-array-rebasing
+ok 9 - M4 native vb: enum-ordinal-array-rebasing
+  ---
+  duration_ms: 1625.013
+  type: 'test'
+  ...
+# Subtest: M4 native python: records-date-arrays
+ok 10 - M4 native python: records-date-arrays
+  ---
+  duration_ms: 73.8353
+  type: 'test'
+  ...
+# Subtest: M4 native java: records-date-arrays
+ok 11 - M4 native java: records-date-arrays
+  ---
+  duration_ms: 2003.1305
+  type: 'test'
+  ...
+# Subtest: M4 native vb: records-date-arrays
+ok 12 - M4 native vb: records-date-arrays
+  ---
+  duration_ms: 2015.7236
+  type: 'test'
+  ...
+# Subtest: M4 native python: enums-pointer-sets
+ok 13 - M4 native python: enums-pointer-sets
+  ---
+  duration_ms: 76.2482
+  type: 'test'
+  ...
+# Subtest: M4 native java: enums-pointer-sets
+ok 14 - M4 native java: enums-pointer-sets
+  ---
+  duration_ms: 2453.0833
+  type: 'test'
+  ...
+# Subtest: M4 native vb: enums-pointer-sets
+ok 15 - M4 native vb: enums-pointer-sets
+  ---
+  duration_ms: 2906.4447
+  type: 'test'
+  ...
+# Subtest: M4 native python: text-random-files
+ok 16 - M4 native python: text-random-files
+  ---
+  duration_ms: 158.9925
+  type: 'test'
+  ...
+# Subtest: M4 native java: text-random-files
+ok 17 - M4 native java: text-random-files
+  ---
+  duration_ms: 3053.5048
+  type: 'test'
+  ...
+# Subtest: M4 native vb: text-random-files
+ok 18 - M4 native vb: text-random-files
+  ---
+  duration_ms: 2466.6486
+  type: 'test'
+  ...
+# Subtest: M4 native python: oop-inheritance-dispatch
+ok 19 - M4 native python: oop-inheritance-dispatch
+  ---
+  duration_ms: 128.1688
+  type: 'test'
+  ...
+# Subtest: M4 native java: oop-inheritance-dispatch
+ok 20 - M4 native java: oop-inheritance-dispatch
+  ---
+  duration_ms: 2636.7618
+  type: 'test'
+  ...
+# Subtest: M4 native vb: oop-inheritance-dispatch
+ok 21 - M4 native vb: oop-inheritance-dispatch
+  ---
+  duration_ms: 2487.6855
+  type: 'test'
+  ...
+# Subtest: M4 native python: all-insert-builtins
+ok 22 - M4 native python: all-insert-builtins
+  ---
+  duration_ms: 75.1801
+  type: 'test'
+  ...
+# Subtest: M4 native java: all-insert-builtins
+ok 23 - M4 native java: all-insert-builtins
+  ---
+  duration_ms: 3083.0794
+  type: 'test'
+  ...
+# Subtest: M4 native vb: all-insert-builtins
+ok 24 - M4 native vb: all-insert-builtins
+  ---
+  duration_ms: 2330.8593
+  type: 'test'
+  ...
+# Subtest: native python preserves selected semantic policies
+ok 25 - native python preserves selected semantic policies
+  ---
+  duration_ms: 135.3144
+  type: 'test'
+  ...
+# Subtest: native java preserves selected semantic policies
+ok 26 - native java preserves selected semantic policies
+  ---
+  duration_ms: 3880.1133
+  type: 'test'
+  ...
+# Subtest: native vb preserves selected semantic policies
+ok 27 - native vb preserves selected semantic policies
+  ---
+  duration_ms: 3723.2457
+  type: 'test'
+  ...
+# Subtest: python native conversions, FOR bound evaluation and WRITEFILE policies match interpreter
+ok 28 - python native conversions, FOR bound evaluation and WRITEFILE policies match interpreter
+  ---
+  duration_ms: 144.3189
+  type: 'test'
+  ...
+# Subtest: python native decimal ROUND and exact REPEAT instruction limit match interpreter
+ok 29 - python native decimal ROUND and exact REPEAT instruction limit match interpreter
+  ---
+  duration_ms: 98.1204
+  type: 'test'
+  ...
+# Subtest: python native numeric conversion rejects overflow as a language diagnostic
+ok 30 - python native numeric conversion rejects overflow as a language diagnostic
+  ---
+  duration_ms: 146.2519
+  type: 'test'
+  ...
+# Subtest: java native conversions, FOR bound evaluation and WRITEFILE policies match interpreter
+ok 31 - java native conversions, FOR bound evaluation and WRITEFILE policies match interpreter
+  ---
+  duration_ms: 3948.9532
+  type: 'test'
+  ...
+# Subtest: java native decimal ROUND and exact REPEAT instruction limit match interpreter
+ok 32 - java native decimal ROUND and exact REPEAT instruction limit match interpreter
+  ---
+  duration_ms: 2867.219
+  type: 'test'
+  ...
+# Subtest: java native numeric conversion rejects overflow as a language diagnostic
+ok 33 - java native numeric conversion rejects overflow as a language diagnostic
+  ---
+  duration_ms: 2794.5887
+  type: 'test'
+  ...
+# Subtest: vb native conversions, FOR bound evaluation and WRITEFILE policies match interpreter
+ok 34 - vb native conversions, FOR bound evaluation and WRITEFILE policies match interpreter
+  ---
+  duration_ms: 1833.5254
+  type: 'test'
+  ...
+# Subtest: vb native decimal ROUND and exact REPEAT instruction limit match interpreter
+ok 35 - vb native decimal ROUND and exact REPEAT instruction limit match interpreter
+  ---
+  duration_ms: 1886.3897
+  type: 'test'
+  ...
+# Subtest: vb native numeric conversion rejects overflow as a language diagnostic
+ok 36 - vb native numeric conversion rejects overflow as a language diagnostic
+  ---
+  duration_ms: 1863.5645
+  type: 'test'
+  ...
+# Subtest: native python embeds persistent random-file object graphs
+ok 37 - native python embeds persistent random-file object graphs
+  ---
+  duration_ms: 121.5867
+  type: 'test'
+  ...
+# Subtest: native java embeds persistent random-file object graphs
+ok 38 - native java embeds persistent random-file object graphs
+  ---
+  duration_ms: 3837.398
+  type: 'test'
+  ...
+# Subtest: native vb embeds persistent random-file object graphs
+ok 39 - native vb embeds persistent random-file object graphs
+  ---
+  duration_ms: 3764.075
+  type: 'test'
+  ...
+# Subtest: M4 Python native compilation and equivalent output
+ok 40 - M4 Python native compilation and equivalent output
+  ---
+  duration_ms: 128.4354
+  type: 'test'
+  ...
+# Subtest: M4 Java native compilation and equivalent output
+ok 41 - M4 Java native compilation and equivalent output
+  ---
+  duration_ms: 3819.979
+  type: 'test'
+  ...
+# Subtest: M4 VB.NET native compilation and equivalent output
+ok 42 - M4 VB.NET native compilation and equivalent output
+  ---
+  duration_ms: 3750.1963
+  type: 'test'
+  ...
+# Subtest: export rejects malformed AST input with source location
+ok 43 - export rejects malformed AST input with source location
+  ---
+  duration_ms: 2.626
+  type: 'test'
+  ...
+1..43
+# tests 43
+# suites 0
+# pass 43
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 42930.0182
+

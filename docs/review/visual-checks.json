@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-24",
+  "desktop": {
+    "width": 1440,
+    "height": 1000
+  },
+  "mobile": {
+    "width": 390,
+    "height": 844
+  },
+  "errors": [],
+  "mobileOverflow": false,
+  "output": "Alex · 2008 · 90"
+}

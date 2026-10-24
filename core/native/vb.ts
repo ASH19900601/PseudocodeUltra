@@ -5,6 +5,7 @@ Imports System.Collections.Generic
 Imports System.Globalization
 Imports System.Text.RegularExpressions
 Imports System.Linq
+Imports System.Numerics
 Module Program
     Class Cell
         Public value As Object
@@ -417,6 +418,31 @@ Module Program
         If c.typeName = "DATE" Then v = parseDate(raw)
         put(c, v, "UNKNOWN")
     End Sub
+    Function decimalText(x As Double) As String
+        If x = 0 Then Return "0"
+        Dim raw = Math.Abs(x).ToString("R", CultureInfo.InvariantCulture).ToLowerInvariant(), pieces = raw.Split("e"c)
+        If pieces.Length = 1 Then Return If(x < 0, "-", "") & raw
+        Dim coefficient = pieces(0).Split("."c), fraction = If(coefficient.Length > 1, coefficient(1), ""), digits = coefficient(0) & fraction
+        Dim point = coefficient(0).Length + Integer.Parse(pieces(1), CultureInfo.InvariantCulture), result As String
+        If point <= 0 Then
+            result = "0." & New String("0"c, -point) & digits
+        ElseIf point >= digits.Length Then
+            result = digits & New String("0"c, point - digits.Length)
+        Else
+            result = digits.Substring(0, point) & "." & digits.Substring(point)
+        End If
+        Return If(x < 0, "-", "") & result
+    End Function
+    Function decimalRound(x As Double, places As Integer) As Double
+        Dim pieces = Math.Abs(x).ToString("R", CultureInfo.InvariantCulture).ToLowerInvariant().Split("e"c), coefficient = pieces(0).Split("."c)
+        Dim fraction = If(coefficient.Length > 1, coefficient(1), ""), exponent = If(pieces.Length > 1, Integer.Parse(pieces(1), CultureInfo.InvariantCulture), 0)
+        Dim shift = places + exponent - fraction.Length
+        If shift >= 0 Then Return x
+        Dim digits = BigInteger.Parse(coefficient(0) & fraction, CultureInfo.InvariantCulture), divisor = BigInteger.Pow(New BigInteger(10), -shift), remainder As BigInteger
+        Dim low = BigInteger.DivRem(digits, divisor, remainder), twice = remainder * 2
+        If twice > divisor OrElse (twice = divisor AndAlso (Not chosen("roundHalf", "even") OrElse Not low.IsEven)) Then low += BigInteger.One
+        Return Math.CopySign(Double.Parse(low.ToString(CultureInfo.InvariantCulture) & "E-" & places.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture), x)
+    End Function
     Function op(o As String, a As Object, b As Object) As Object
         If TypeOf a Is Ptr OrElse TypeOf b Is Ptr Then
             If Not TypeOf a Is Ptr OrElse Not TypeOf b Is Ptr OrElse (o <> "=" AndAlso o <> "<>") Then Throw failure("COMPARE")
@@ -511,12 +537,13 @@ Module Program
                 If (n = "UCASE" OrElse n = "LCASE") AndAlso dialect.StartsWith("9618") Then check("CHAR", a(0))
                 Return If(n = "UCASE" OrElse n = "TO_UPPER", CStr(a(0)).ToUpperInvariant(), CStr(a(0)).ToLowerInvariant())
             Case "NUM_TO_STR"
-                number(a(0)) : Return text(a(0))
+                Return decimalText(number(a(0)))
             Case "IS_NUM", "STR_TO_NUM"
-                Dim valid = Regex.IsMatch(CStr(a(0)), "^[+-]?[0-9]+(\.[0-9]+)?$")
+                Dim parsed As Double
+                Dim valid = Regex.IsMatch(CStr(a(0)), "^[+-]?[0-9]+(\.[0-9]+)?$") AndAlso Double.TryParse(CStr(a(0)), NumberStyles.Float, CultureInfo.InvariantCulture, parsed) AndAlso Double.IsFinite(parsed)
                 If n = "IS_NUM" Then Return valid
                 If Not valid Then Throw failure("BUILTIN_VALUE")
-                Return Double.Parse(CStr(a(0)), CultureInfo.InvariantCulture)
+                Return parsed
             Case "ASC"
                 check("CHAR", a(0))
                 Dim v = Char.ConvertToUtf32(CStr(a(0)), 0)
@@ -531,10 +558,7 @@ Module Program
             Case "ROUND"
                 Dim x = number(a(0)), places = CInt(whole(a(1)))
                 If places < 0 OrElse places > 15 Then Throw failure("BUILTIN_RANGE")
-                Dim p = Math.Pow(10, places)
-                Dim scaled = (Math.Abs(x) + 2.220446049250313E-16) * p, low = Math.Floor(scaled)
-                Dim v = If(chosen("roundHalf", "even") AndAlso Math.Abs(scaled - low - 0.5) < 1.0E-12, If(low Mod 2 = 0, low, low + 1), Math.Floor(scaled + 0.5))
-                Return Math.CopySign(v, x) / p
+                Return decimalRound(x, places)
             Case "RAND", "RANDOM"
                 Dim upper = If(n = "RAND", whole(a(0)), 1.0)
                 If upper <= 0 Then Throw failure("BUILTIN_RANGE")

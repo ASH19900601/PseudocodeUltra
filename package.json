@@ -12,7 +12,7 @@
     "test:native": "tsx --test conformance/native/*.test.ts",
     "test:e2e": "playwright test",
     "test:all": "npm test && npm run test:native && npm run test:e2e && npm run build && npm run benchmark",
-    "setup:toolchains": "bash scripts/setup-toolchains.sh",
+    "setup:toolchains": "node scripts/setup-toolchains.mjs",
     "test:production": "node scripts/smoke-production.mjs",
     "format": "prettier --write core web conformance scripts/*.ts scripts/*.mjs README.md docs/*.md",
     "benchmark": "tsx scripts/benchmark.ts",

@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { toolchains, nativeEnvironment, normalizeOutput } from "./helpers";
 import { transpile, type Target } from "../../core/transpile";
 import { run } from "../../core/runtime";
 const programs: Record<string, string> = {
@@ -192,7 +193,7 @@ OUTPUT LEFT("Hello",2),RIGHT("Hello",2),MID("Hello",2,3), LENGTH("Hello"),UCASE(
 OUTPUT NUM_TO_STR(12.5), STR_TO_NUM("4.5"),IS_NUM("x"),ASC('A'),CHR(66),INT(-2.9), INT(RAND(10))
 OUTPUT DAY(D),MONTH(D),YEAR(D),DAYINDEX(D),DAY(TODAY())`,
 };
-const dotnet = process.env.DOTNET_BIN || "/workspace/.tools/dotnet/dotnet";
+const dotnet = toolchains.dotnet;
 function execute(cmd: string, args: string[], cwd: string) {
   const r = spawnSync(cmd, args, {
     cwd,
@@ -200,13 +201,13 @@ function execute(cmd: string, args: string[], cwd: string) {
     timeout: 60000,
     env: {
       ...process.env,
-      DOTNET_CLI_HOME: "/tmp/dotnet-home",
+      ...nativeEnvironment,
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1",
       DOTNET_CLI_TELEMETRY_OPTOUT: "1",
     },
   });
   assert.equal(r.status, 0, r.stdout + "\n" + r.stderr);
-  return r.stdout;
+  return normalizeOutput(r.stdout);
 }
 for (const [name, source] of Object.entries(programs))
   for (const target of ["python", "java", "vb"] as Target[])
@@ -218,20 +219,15 @@ for (const [name, source] of Object.entries(programs))
       const code = transpile(source, "9618-A2", target, opts);
       if (target === "python") {
         writeFileSync(join(dir, "main.py"), code);
-        assert.equal(execute("python", ["main.py"], dir), expected);
+        assert.equal(execute(toolchains.python, ["main.py"], dir), expected);
       } else if (target === "java") {
         writeFileSync(join(dir, "Main.java"), code);
         execute(
-          "java",
-          [
-            "-jar",
-            process.env.ECJ_JAR || "/workspace/.tools/ecj.jar",
-            "-17",
-            "Main.java",
-          ],
+          toolchains.java,
+          ["-jar", toolchains.ecj, "-17", "Main.java"],
           dir,
         );
-        assert.equal(execute("java", ["Main"], dir), expected);
+        assert.equal(execute(toolchains.java, ["Main"], dir), expected);
       } else {
         writeFileSync(join(dir, "Program.vb"), code);
         writeFileSync(

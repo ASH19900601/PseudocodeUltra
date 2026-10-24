@@ -4,6 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { toolchains, nativeEnvironment, normalizeOutput } from "./helpers";
 import { transpile, type Target } from "../../core/transpile";
 import { run } from "../../core/runtime";
 const source = `PROCEDURE Bump(BYREF X:INTEGER)
@@ -52,27 +53,22 @@ function execute(cmd: string, args: string[], cwd = dir) {
     timeout: 60000,
     env: {
       ...process.env,
-      DOTNET_CLI_HOME: "/tmp/dotnet-home",
+      ...nativeEnvironment,
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1",
       DOTNET_CLI_TELEMETRY_OPTOUT: "1",
     },
   });
   assert.equal(r.status, 0, r.stdout + "\n" + r.stderr);
-  return r.stdout;
+  return normalizeOutput(r.stdout);
 }
 test("M4 Python native compilation and equivalent output", () => {
   writeFileSync(join(dir, "main.py"), transpile(source, "9618-AS", "python"));
-  assert.equal(execute("python", ["main.py"]), expected);
+  assert.equal(execute(toolchains.python, ["main.py"]), expected);
 });
 test("M4 Java native compilation and equivalent output", () => {
   writeFileSync(join(dir, "Main.java"), transpile(source, "9618-AS", "java"));
-  execute("java", [
-    "-jar",
-    process.env.ECJ_JAR || "/workspace/.tools/ecj.jar",
-    "-17",
-    "Main.java",
-  ]);
-  assert.equal(execute("java", ["Main"]), expected);
+  execute(toolchains.java, ["-jar", toolchains.ecj, "-17", "Main.java"]);
+  assert.equal(execute(toolchains.java, ["Main"]), expected);
 });
 test("M4 VB.NET native compilation and equivalent output", () => {
   writeFileSync(join(dir, "Program.vb"), transpile(source, "9618-AS", "vb"));
@@ -80,7 +76,7 @@ test("M4 VB.NET native compilation and equivalent output", () => {
     join(dir, "export.vbproj"),
     '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><RootNamespace>ExportTest</RootNamespace></PropertyGroup></Project>',
   );
-  execute(process.env.DOTNET_BIN || "/workspace/.tools/dotnet/dotnet", [
+  execute(toolchains.dotnet, [
     "build",
     "export.vbproj",
     "--nologo",
@@ -88,9 +84,7 @@ test("M4 VB.NET native compilation and equivalent output", () => {
     "--ignore-failed-sources",
   ]);
   assert.equal(
-    execute(process.env.DOTNET_BIN || "/workspace/.tools/dotnet/dotnet", [
-      "bin/Debug/net8.0/export.dll",
-    ]),
+    execute(toolchains.dotnet, ["bin/Debug/net8.0/export.dll"]),
     expected,
   );
 });
