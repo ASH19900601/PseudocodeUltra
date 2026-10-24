@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-24T10:22:25.464Z",
+  "browser": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "records": [
+    {
+      "phase": "practice",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "width": 1440,
+      "clientWidth": 1440,
+      "score": "当前答卷：100 / 100",
+      "errors": []
+    },
+    {
+      "phase": "exam",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "width": 1440,
+      "clientWidth": 1440,
+      "status": "考试进行中",
+      "countdown": "45:00",
+      "aidsDisabled": true,
+      "errors": []
+    },
+    {
+      "phase": "practice",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "width": 390,
+      "clientWidth": 390,
+      "score": "当前答卷：100 / 100",
+      "errors": []
+    },
+    {
+      "phase": "exam",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "width": 390,
+      "clientWidth": 390,
+      "status": "考试进行中",
+      "countdown": "45:00",
+      "aidsDisabled": true,
+      "errors": []
+    }
+  ]
+}

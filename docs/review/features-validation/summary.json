@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-10-24 18:25:45",
+  "timezone": "Asia/Shanghai",
+  "sourceSha256": "e57a038d55d8cae66bec30c2de9245e4c9a40ed3fe5f989eba206bf952b6be65",
+  "node": "v22.16.0",
+  "scope": "source-and-development-browser",
+  "checks": [
+    {
+      "name": "specifications",
+      "status": "skipped",
+      "reason": "--skip-specs: external PDF retrieval was not verified in this run"
+    },
+    {
+      "name": "core",
+      "exitCode": 0,
+      "durationMs": 1124.8641,
+      "status": "passed",
+      "tests": 222,
+      "passed": 222,
+      "failed": 0
+    },
+    {
+      "name": "native",
+      "exitCode": 0,
+      "durationMs": 34734.2246,
+      "status": "passed",
+      "tests": 43,
+      "passed": 43,
+      "failed": 0
+    },
+    {
+      "name": "browser",
+      "exitCode": 0,
+      "durationMs": 41288.904800000004,
+      "status": "passed",
+      "tests": 52,
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "typecheck",
+      "exitCode": 0,
+      "durationMs": 2684.410400000008,
+      "status": "passed"
+    },
+    {
+      "name": "build",
+      "status": "skipped",
+      "reason": "--no-build: no build requested"
+    },
+    {
+      "name": "performance",
+      "exitCode": 0,
+      "durationMs": 4223.177100000001,
+      "status": "passed"
+    },
+    {
+      "name": "production",
+      "status": "skipped",
+      "reason": "Requires a production build; --no-build selected"
+    }
+  ],
+  "status": "passed-with-skips",
+  "performance": {
+    "loops": 10000000,
+    "executionMs": 52.29900000000001,
+    "lines": 100000,
+    "coldMs": 3794.429,
+    "incrementalMs": 18.58259999999973,
+    "node": "v22.16.0",
+    "mode": "fast execution without trace; one nonstructural edit after cold analysis"
+  },
+  "finishedAt": "2026-10-24 18:27:09"
+}

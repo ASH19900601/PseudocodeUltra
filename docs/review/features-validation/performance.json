@@ -1,0 +1,9 @@
+{
+  "loops": 10000000,
+  "executionMs": 52.29900000000001,
+  "lines": 100000,
+  "coldMs": 3794.429,
+  "incrementalMs": 18.58259999999973,
+  "node": "v22.16.0",
+  "mode": "fast execution without trace; one nonstructural edit after cold analysis"
+}

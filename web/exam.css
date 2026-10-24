@@ -1,0 +1,91 @@
+.exam-panel {
+  margin: 0 26px 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--border, #d7dce2);
+  border-radius: 10px;
+  background: var(--surface, #f7f9fb);
+  color: var(--text, #172b3a);
+  font-size: 13px;
+}
+.exam-panel [hidden] {
+  display: none !important;
+}
+.exam-panel summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+.exam-panel summary span {
+  font-weight: 400;
+}
+.exam-panel p {
+  margin: 10px 0;
+  line-height: 1.6;
+}
+.exam-controls {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.exam-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.exam-controls input[type="number"] {
+  width: 95px;
+}
+.exam-controls .exam-copy-option {
+  flex-direction: row;
+  align-items: center;
+  padding: 8px 0;
+}
+.exam-panel input,
+.exam-panel select,
+.exam-panel button {
+  font: inherit;
+}
+.exam-panel button {
+  cursor: pointer;
+  padding: 7px 10px;
+}
+.exam-panel button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.exam-panel #exam-countdown {
+  font-family: monospace;
+  font-size: 20px;
+  font-weight: 700;
+}
+.exam-panel #exam-insert {
+  margin-top: 12px;
+}
+.exam-signatures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
+  gap: 5px 20px;
+}
+.exam-signatures code {
+  overflow-wrap: anywhere;
+}
+.exam-signatures small {
+  display: block;
+  opacity: 0.8;
+}
+.exam-panel pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .exam-panel {
+    margin: 0 10px 10px;
+    padding: 10px;
+  }
+  .exam-controls {
+    align-items: stretch;
+  }
+  .exam-controls label {
+    max-width: 100%;
+  }
+}

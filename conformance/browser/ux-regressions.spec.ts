@@ -281,6 +281,11 @@ test("output tabs expose keyboard navigation and mobile reference remains visibl
   await page.setViewportSize({ width: 390, height: 844 });
   await page.locator('[data-tab="console"]').focus();
   await page.keyboard.press("End");
+  await expect(page.locator('[data-tab="practice"]')).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await page.keyboard.press("ArrowLeft");
   await expect(page.locator('[data-tab="reference"]')).toHaveAttribute(
     "aria-selected",
     "true",

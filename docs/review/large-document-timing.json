@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-24",
+  "sourceSha256": "e57a038d55d8cae66bec30c2de9245e4c9a40ed3fe5f989eba206bf952b6be65",
+  "environment": "Windows installed Edge, Vite development server, Playwright; two concurrent browser test workers",
+  "note": "Input command return times are not full-analysis completion latency. maxGap is the largest measured interval between 50 ms UI heartbeat ticks, not a direct long-task duration. Full last-line diagnostics, cancellation/resume, scroll and subsequent edits are separately asserted in browser.json.",
+  "records": [
+    {
+      "test": "100000-line real clipboard paste remains responsive, cancellation restores complete diagnostics, and edits/scrolling work",
+      "attachment": "large-document-timing",
+      "metrics": {
+        "pasteMs": 144,
+        "last": 4480.200000047684,
+        "maxGap": 147.89999997615814,
+        "ticks": 77
+      }
+    },
+    {
+      "test": "100000-line native insertText input bypasses Chromium's unbounded DOM expansion",
+      "attachment": "large-native-input-timing",
+      "metrics": {
+        "insertMs": 157
+      }
+    }
+  ]
+}

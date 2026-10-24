@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-24",
+  "environment": "Windows actual installed Edge, development server",
+  "baseline": {
+    "nativeInsertText": {
+      "completed": false,
+      "rendererWorkingSetBytes": 1684586496,
+      "rendererCPUSeconds": 76.2,
+      "profilerStopBlocked": true,
+      "ownedProcessTerminated": true
+    },
+    "realSystemClipboardPaste": {
+      "pasteCommandMs": 96,
+      "observedMs": 8122,
+      "visibleCodeMirrorLineDOMs": 50,
+      "sourceLines": 100000,
+      "cpuSelfSamplesMicroseconds": {
+        "(idle) :0": 8045619,
+        "(program) :0": 132806,
+        "(garbage collector) :0": 24256,
+        "sliceString http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SGGMKXXF.js?v=cb1ce032:357": 9431,
+        "handlers.paste http://127.0.0.1:5173/node_modules/.vite/deps/chunk-TMUV7QBM.js?v=cb1ce032:5029": 8706,
+        "match http://127.0.0.1:5173/node_modules/.vite/deps/chunk-FBVCHCFF.js?v=cb1ce032:181": 8219,
+        "sliceString http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SGGMKXXF.js?v=cb1ce032:271": 6296,
+        "analysisWorker.onmessage http://127.0.0.1:5173/web/main.ts:127": 4569,
+        "parseLine http://127.0.0.1:5173/node_modules/.vite/deps/chunk-FBVCHCFF.js?v=cb1ce032:2113": 3327,
+        "setItem :0": 3320,
+        "toText http://127.0.0.1:5173/node_modules/.vite/deps/chunk-SGGMKXXF.js?v=cb1ce032:2428": 3252,
+        " http://127.0.0.1:5173/web/main.ts:159": 3217
+      }
+    }
+  },
+  "rootCause": "Playwright keyboard.insertText uses Chromium native contenteditable DOM insertion. In this workload it expands 100000 native lines before CodeMirror can reconcile them. Real Ctrl+V uses CodeMirror paste handler and a text transaction, keeping viewport virtualization. This distinction invalidates treating the old unfinished insertText command as a measured real clipboard paste.",
+  "sourceEvidence": [
+    "node_modules/@codemirror/view/dist/index.js handlers.beforeinput records insertingText but leaves default native insertion enabled",
+    "node_modules/@codemirror/view/dist/index.js handlers.paste calls doPaste and handles the clipboard event",
+    "web/main.ts formerly submitted duplicate full-document analysis from both CodeMirror linter and a separate debounce; hover and completion parsed LanguageDocument synchronously"
+  ],
+  "fix": [
+    "Route large cancellable non-composition insertText beforeinput events through CodeMirror replaceSelection transaction",
+    "Deduplicate same-source/profile worker requests, terminate superseded/cancelled synchronous work and expose recoverable analysis state",
+    "Keep completion/hover/definition/rename work in a separate cancellable worker",
+    "Keep complete diagnostics with paged DOM rendering and a full JSON download"
+  ],
+  "verification": "Final controller unit and real Edge browser regressions passed; see features-validation/summary.json, features-validation/browser.json and large-document-timing.json. Complete last-line diagnostics, cancellation/resume and source retention are asserted."
+}

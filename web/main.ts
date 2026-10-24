@@ -1,10 +1,11 @@
-import { EditorView, basicSetup } from "codemirror";
+import { EditorView, basicSetup, minimalSetup } from "codemirror";
 import {
   EditorState,
   Compartment,
   StateEffect,
   StateField,
   RangeSetBuilder,
+  Transaction,
 } from "@codemirror/state";
 import {
   keymap,
@@ -30,7 +31,7 @@ import {
   type Completion,
 } from "@codemirror/autocomplete";
 import { tags } from "@lezer/highlight";
-import { linter, forceLinting } from "@codemirror/lint";
+import { linter, forceLinting, setDiagnostics } from "@codemirror/lint";
 import {
   profile,
   signatures,
@@ -38,17 +39,16 @@ import {
   type Diagnostic,
 } from "../core/dialects";
 import { keywords, lex } from "../core/lexer";
-import { analyze } from "../core/semantic";
 import {
-  outline,
-  definition,
-  rename,
+  WorkerRequestController,
+  type AnalysisState,
+} from "./analysis-controller";
+import {
   completionKeywords,
-  hover,
-  languageDocument,
-  completionItems,
   signatureHelp,
   type UserSignature,
+  type LanguageCompletion,
+  type Definition,
 } from "../core/language";
 import { builtinSignature, signatureText } from "../core/builtins";
 import {
@@ -74,6 +74,14 @@ import {
   importFiles,
 } from "./storage";
 import { examples } from "./examples";
+import {
+  createExamController,
+  type ExamSession,
+  type ExamEnvironment,
+} from "./exam";
+import { validConfig } from "../core/exam";
+import { mountPractice } from "./practice";
+import { defaultPolicies } from "../core/policies";
 import "./style.css";
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -89,6 +97,11 @@ let language: DialectId = settingChoice(
   "0478",
 );
 let filesReady = false;
+let examMode = false,
+  examLocked = false;
+let examFiles: Record<string, VirtualFile> = {};
+let examController: ReturnType<typeof createExamController> | undefined;
+let practiceController: ReturnType<typeof mountPractice> | undefined;
 let sourceName = settings.getItem("sourceName") || "main.pseudo";
 let runMode = settingChoice(
   settings.getItem("runMode"),
@@ -141,37 +154,76 @@ const randomSeed = () =>
 let userSignatureList: UserSignature[] = [];
 let continuationLines = new Set<number>();
 const numberConfig = new Compartment();
-const analysisWorker = new Worker(
-  new URL("./language.worker.ts", import.meta.url),
-  { type: "module" },
+const serviceWorker = () =>
+  new Worker(new URL("./language.worker.ts", import.meta.url), {
+    type: "module",
+  });
+let analysisPaused = false;
+let analysisStatus: AnalysisState | undefined;
+let analysisClock: ReturnType<typeof setInterval> | undefined;
+const analysisController = new WorkerRequestController(
+  serviceWorker,
+  (state) => {
+    analysisStatus = state;
+    clearInterval(analysisClock);
+    renderAnalysisStatus();
+    if (state.status === "running")
+      analysisClock = setInterval(renderAnalysisStatus, 200);
+  },
 );
-let requestId = 0;
-let analysisWorkerError: Error | undefined;
-const analysisRequests = new Map<
-  number,
-  {
-    source: string;
-    profileKey: string;
-    resolve: (d: ReturnType<typeof analyze>["diagnostics"]) => void;
-    reject: (e: Error) => void;
-  }
->();
-analysisWorker.onmessage = ({ data }) => {
-  const request = analysisRequests.get(data.id);
-  if (request) {
-    analysisRequests.delete(data.id);
-    const current =
-      request.source === editor.state.doc.toString() &&
-      request.profileKey === analysisProfileKey();
-    if (current && data.signatures) userSignatureList = data.signatures;
-    if (current && data.outline) renderOutline(data.outline);
+// Interactive symbol queries must never synchronously parse the whole document
+// in the UI thread. They use a separate cancellable worker from diagnostics.
+const queryController = new WorkerRequestController(serviceWorker);
+const analysisProfileKey = () => JSON.stringify(currentProfile());
+function languageOptions() {
+  return {
+    guideVersion,
+    strictness,
+    styleChecks: currentProfile().styleChecks,
+    logicalPrecedence: currentProfile().logicalPrecedence,
+  };
+}
+function renderAnalysisStatus() {
+  if (examMode) return;
+  const state = analysisStatus;
+  if (!state || !$("analysis-state")) return;
+  const running = state.status === "running";
+  const pending = state.status === "pending";
+  $("analysis-progress").hidden = !running;
+  $("analysis-cancel").hidden = !(running || pending);
+  $("analysis-resume").hidden =
+    running || pending || state.status === "complete";
+  $("analysis-state").textContent = pending
+    ? "代码已更改，等待分析当前文档"
+    : running
+      ? `${state.phase} · ${((Date.now() - state.startedAt) / 1000).toFixed(1)} 秒 · 编辑器可继续操作`
+      : state.status === "complete"
+        ? "完整诊断已更新"
+        : state.status === "cancelled"
+          ? "分析已取消，文档完整保留；点击重新分析恢复"
+          : `分析失败：${state.phase || "未知错误"}`;
+}
+async function analyzeAsync(source: string) {
+  if (analysisPaused)
+    throw Object.assign(new Error("分析已暂停"), { name: "AbortError" });
+  const profileKey = analysisProfileKey();
+  const result = await analysisController.request<{
+    diagnostics: Diagnostic[];
+    signatures: UserSignature[];
+    outline: { name: string; kind: string; line: number }[];
+    continuations: number[];
+  }>({ source, dialect: language, profileOptions: languageOptions() });
+  if (
+    source === editor.state.doc.toString() &&
+    profileKey === analysisProfileKey()
+  ) {
+    userSignatureList = result.signatures;
+    renderOutline(result.outline);
     if (
-      current &&
-      data.continuations &&
-      (data.continuations.length !== continuationLines.size ||
-        data.continuations.some((line: number) => !continuationLines.has(line)))
+      result.continuations.length !== continuationLines.size ||
+      result.continuations.some((line) => !continuationLines.has(line))
     ) {
-      continuationLines = new Set(data.continuations);
+      continuationLines = new Set(result.continuations);
       editor.dispatch({
         effects: numberConfig.reconfigure(
           lineNumbers({
@@ -180,45 +232,22 @@ analysisWorker.onmessage = ({ data }) => {
         ),
       });
     }
-    data.error
-      ? request.reject(new Error(data.error))
-      : request.resolve(data.diagnostics);
   }
-};
-analysisWorker.onerror = (event) => {
-  analysisWorkerError = new Error(
-    event.message ||
-      "语言分析失败，请刷新页面 / Language analysis failed; reload the page",
-  );
-  for (const request of analysisRequests.values())
-    request.reject(analysisWorkerError);
-  analysisRequests.clear();
-};
-const analysisProfileKey = () => JSON.stringify(currentProfile());
-function analyzeAsync(source: string) {
-  if (analysisWorkerError) return Promise.reject(analysisWorkerError);
-  return new Promise<ReturnType<typeof analyze>["diagnostics"]>(
-    (resolve, reject) => {
-      const id = ++requestId;
-      analysisRequests.set(id, {
-        source,
-        profileKey: analysisProfileKey(),
-        resolve,
-        reject,
-      });
-      analysisWorker.postMessage({
-        id,
-        source,
-        dialect: language,
-        profileOptions: {
-          guideVersion,
-          strictness,
-          styleChecks: currentProfile().styleChecks,
-          logicalPrecedence: currentProfile().logicalPrecedence,
-        },
-      });
-    },
-  );
+  return result.diagnostics;
+}
+async function languageQuery<T>(
+  operation: string,
+  detail: Record<string, unknown>,
+) {
+  if (examMode) throw new DOMException("考试期间关闭学习辅助", "AbortError");
+  const result = await queryController.request<{ result: T }>({
+    type: "query",
+    source: editor.state.doc.toString(),
+    dialect: language,
+    operation,
+    ...detail,
+  });
+  return result.result;
 }
 const escape = (s: any) =>
   String(s ?? "").replace(
@@ -229,7 +258,20 @@ const escape = (s: any) =>
       ]!,
   );
 $("app").innerHTML =
-  `<aside class="rail"><a class="brand" href="#" aria-label="Pseudocode Ultra">P<span>u</span></a><button id="workspace-nav" class="rail-active" title="Workspace">⌘</button><button id="examples-nav" title="Examples">▤</button><button id="help-nav" title="Language reference">?</button><div class="rail-bottom">CAIE</div></aside><div class="shell"><header><div><span class="eyebrow">COMPUTER SCIENCE LAB</span><h1>Pseudocode <em>Ultra</em></h1></div><div class="header-right"><span class="local-dot"></span>本地执行 · Local-first <button id="theme" title="Switch theme">◐</button></div></header><div id="storage-warning" class="storage-warning" role="alert" hidden>本机存储不可用或保存失败，部分内容可能仅在本次会话保留。请下载备份。 / Local storage failed; download a backup.</div><section class="toolbar"><div class="select-wrap"><label for="dialect">考试方言 / DIALECT</label><select id="dialect"><option>0478</option><option>2210</option><option>9618-AS</option><option>9618-A2</option></select></div><span class="divider"></span><button id="run" class="primary">▶ 运行 <kbd>Ctrl ↵</kbd></button><select id="run-mode" aria-label="运行方式 / Run mode"><option value="manual">手动运行</option><option value="change">输入后运行</option><option value="blur">失焦时运行</option></select><label class="fast-toggle" title="高速执行不生成追踪表，调试请关闭"><input id="fast-mode" type="checkbox">高速</label><button id="pause" disabled>Ⅱ 暂停</button><button id="step">↳ 单步</button><button id="over" disabled>↷ 跳过</button><button id="out" disabled>↑ 跳出</button><button id="stop" disabled>■ 停止</button><span class="toolbar-space"></span><button id="format">格式化</button><button id="print-pdf">PDF</button><button id="download">↓ 保存</button><button id="upload">↑ 打开</button><input id="source-upload" type="file" accept=".txt,.pseudo,.psc" hidden></section><main><section class="editor-panel panel"><div class="panel-heading"><div class="file-tab"><span class="file-icon">⌁</span> <span id="source-name">${escape(sourceName)}</span><span id="save-state" class="save-state" role="status">已保存本机</span></div><select id="examples" aria-label="Load example"><option value="">示例程序 / Examples</option>${examples.map((e, i) => `<option value="${i}">${e.name}</option>`).join("")}</select></div><div id="editor"></div><div id="signature-help" hidden></div><div class="editor-footer"><span id="cursor">Ln 1, Col 1</span><span>UTF-8 <span id="indent">4 spaces</span><button id="clear-breakpoints">清除断点</button></span></div></section><aside class="inspector panel"><div class="panel-heading"><h2>调试工作台 <small>DEBUGGER</small></h2><span id="status" class="status" role="status" aria-live="polite">就绪</span></div><div class="debug-section"><h3>变量 <small>VARIABLES</small></h3><div id="variables" class="empty">运行或单步执行后查看变量</div></div><div class="debug-section"><h3>监视表达式 <small>WATCH</small></h3><form id="watch-form"><input id="watch-input" placeholder="变量名称，例如 Total" aria-label="Watch variable"><button>＋</button></form><div id="watches"></div></div><div class="debug-section"><h3>调用栈 <small>CALL STACK</small></h3><div id="stack" class="empty">尚未进入子程序</div></div><div class="debug-section"><h3>虚拟文件 <small>FILES · IndexedDB</small></h3><div id="files"></div><button id="add-file">＋ 新建文件</button><button id="import-file">↑ 导入文件</button><button id="backup-files">↓ 备份全部</button><input id="file-upload" type="file" hidden></div><div class="debug-section"><h3>代码大纲 <small>OUTLINE</small></h3><div id="outline"></div></div><div class="policy-note"><span>ℹ</span><div>Cambridge 规范版本可配置<br><small>依据官方 Guide / Insert / v6 考纲实现。具体来源与模糊语义策略见语言参考。</small></div></div></aside><section class="output-panel panel"><nav class="tabs" role="tablist" aria-label="Output panels"><button data-tab="console" class="selected">终端 <span>CONSOLE</span></button><button data-tab="diagnostics">诊断 <span id="diagnostic-count">0</span></button><button data-tab="trace">追踪表</button><button data-tab="flow">流程图</button><button data-tab="ast">AST / Tokens</button><button data-tab="export">代码转换</button><button data-tab="reference">语言参考</button></nav><div id="console" class="tab-pane"><div id="console-output"><div class="terminal-hint">Pseudocode Ultra runtime<br><span>准备好了。点击运行，或点击行号旁设置断点后开始单步执行。</span></div></div><form id="input-form" hidden><label for="runtime-input">INPUT →</label><input id="runtime-input" autocomplete="off" placeholder="输入值后按 Enter"><button class="primary">提交</button></form></div><div id="diagnostics" class="tab-pane" hidden></div><div id="trace" class="tab-pane" hidden><div class="pane-actions"><button id="csv">↓ CSV</button><button id="xlsx">↓ Excel</button><label><input id="trace-blank" type="checkbox"> 填空练习</label><button id="grade-trace">批改本页</button><span id="trace-grade"></span><select id="trace-filter" aria-label="Trace row policy"><option value="all">每条语句</option><option value="changes">仅变量变化</option><option value="modules">模块进入/返回</option><option value="loops">每次循环</option><option value="branches">IF/CASE 分支</option><option value="left-to-right">从左到右</option></select><input id="trace-columns" aria-label="Trace columns" placeholder="列顺序，如 I, Total"><label><input id="hide-repeats" type="checkbox"> 隐藏重复值</label></div><div class="pane-actions"><button id="trace-prev">上一页</button><span id="trace-page" aria-live="polite"></span><button id="trace-next">下一页</button></div><div id="trace-table"></div></div><div id="flow" class="tab-pane" hidden><select id="flow-module" aria-label="Flowchart module"></select><div id="flow-content"></div></div><div id="ast" class="tab-pane" hidden><select id="ast-mode" aria-label="AST or Tokens"><option>AST</option><option>Tokens</option></select><pre id="ast-content"></pre></div><div id="export" class="tab-pane" hidden><div class="pane-actions"><select id="target" aria-label="转换语言 / Target language"><option value="python">Python 3</option><option value="java">Java 17+</option><option value="vb">VB.NET</option></select><button id="convert">转换</button><button id="export-download" disabled>↓ 下载</button><span>完整类型与虚拟文件语义 · 独立程序，仅依赖目标语言标准库。</span></div><pre id="export-content"></pre></div><div id="reference" class="tab-pane" hidden></div></section></main><footer><span><i></i> 不上传源码 · 在浏览器 Worker 中执行</span><span id="runtime-info">指令上限 100,000 · 确定性随机种子</span></footer></div><dialog id="file-dialog" aria-labelledby="file-title"><form method="dialog"><h2 id="file-title">文件</h2><p id="file-record-note" hidden>此文件包含随机记录；修改文本会保留所有记录。 / Random records will be preserved.</p><textarea aria-labelledby="file-title" id="file-text" spellcheck="false"></textarea><div class="dialog-actions"><button value="cancel">取消</button><button id="file-save" value="save" class="primary">保存</button></div></form></dialog>`;
+  `<aside class="rail"><a class="brand" href="#" aria-label="Pseudocode Ultra">P<span>u</span></a><button id="workspace-nav" class="rail-active" title="Workspace">⌘</button><button id="examples-nav" title="Examples">▤</button><button id="help-nav" title="Language reference">?</button><div class="rail-bottom">CAIE</div></aside><div class="shell"><header><div><span class="eyebrow">COMPUTER SCIENCE LAB</span><h1>Pseudocode <em>Ultra</em></h1></div><div class="header-right"><span class="local-dot"></span>本地执行 · Local-first <button id="practice-open" title="原创练习">练习</button><button id="exam-open" title="考试练习">考试</button><button id="theme" title="Switch theme">◐</button></div></header><div id="storage-warning" class="storage-warning" role="alert" hidden>本机存储不可用或保存失败，部分内容可能仅在本次会话保留。请下载备份。 / Local storage failed; download a backup.</div><section class="toolbar"><div class="select-wrap"><label for="dialect">考试方言 / DIALECT</label><select id="dialect"><option>0478</option><option>2210</option><option>9618-AS</option><option>9618-A2</option></select></div><span class="divider"></span><button id="run" class="primary">▶ 运行 <kbd>Ctrl ↵</kbd></button><select id="run-mode" aria-label="运行方式 / Run mode"><option value="manual">手动运行</option><option value="change">输入后运行</option><option value="blur">失焦时运行</option></select><label class="fast-toggle" title="高速执行不生成追踪表，调试请关闭"><input id="fast-mode" type="checkbox">高速</label><button id="pause" disabled>Ⅱ 暂停</button><button id="step">↳ 单步</button><button id="over" disabled>↷ 跳过</button><button id="out" disabled>↑ 跳出</button><button id="stop" disabled>■ 停止</button><span class="toolbar-space"></span><button id="format">格式化</button><button id="print-pdf">PDF</button><button id="download">↓ 保存</button><button id="upload">↑ 打开</button><input id="source-upload" type="file" accept=".txt,.pseudo,.psc" hidden></section><main><section class="editor-panel panel"><div class="panel-heading"><div class="file-tab"><span class="file-icon">⌁</span> <span id="source-name">${escape(sourceName)}</span><span id="save-state" class="save-state" role="status">已保存本机</span></div><select id="examples" aria-label="Load example"><option value="">示例程序 / Examples</option>${examples.map((e, i) => `<option value="${i}">${e.name}</option>`).join("")}</select></div><div id="editor"></div><div id="signature-help" hidden></div><div class="editor-footer"><span id="cursor">Ln 1, Col 1</span><span>UTF-8 <span id="indent">4 spaces</span><button id="clear-breakpoints">清除断点</button></span></div></section><aside class="inspector panel"><div class="panel-heading"><h2>调试工作台 <small>DEBUGGER</small></h2><span id="status" class="status" role="status" aria-live="polite">就绪</span></div><div class="debug-section"><h3>变量 <small>VARIABLES</small></h3><div id="variables" class="empty">运行或单步执行后查看变量</div></div><div class="debug-section"><h3>监视表达式 <small>WATCH</small></h3><form id="watch-form"><input id="watch-input" placeholder="变量名称，例如 Total" aria-label="Watch variable"><button>＋</button></form><div id="watches"></div></div><div class="debug-section"><h3>调用栈 <small>CALL STACK</small></h3><div id="stack" class="empty">尚未进入子程序</div></div><div class="debug-section"><h3>虚拟文件 <small>FILES · IndexedDB</small></h3><div id="files"></div><button id="add-file">＋ 新建文件</button><button id="import-file">↑ 导入文件</button><button id="backup-files">↓ 备份全部</button><input id="file-upload" type="file" hidden></div><div class="debug-section"><h3>代码大纲 <small>OUTLINE</small></h3><div id="outline"></div></div><div class="policy-note"><span>ℹ</span><div>Cambridge 规范版本可配置<br><small>依据官方 Guide / Insert / v6 考纲实现。具体来源与模糊语义策略见语言参考。</small></div></div></aside><section class="output-panel panel"><nav class="tabs" role="tablist" aria-label="Output panels"><button data-tab="console" class="selected">终端 <span>CONSOLE</span></button><button data-tab="diagnostics">诊断 <span id="diagnostic-count">0</span></button><button data-tab="trace">追踪表</button><button data-tab="flow">流程图</button><button data-tab="ast">AST / Tokens</button><button data-tab="export">代码转换</button><button data-tab="reference">语言参考</button><button data-tab="practice">原创练习</button></nav><div id="console" class="tab-pane"><div id="console-output"><div class="terminal-hint">Pseudocode Ultra runtime<br><span>准备好了。点击运行，或点击行号旁设置断点后开始单步执行。</span></div></div><form id="input-form" hidden><label for="runtime-input">INPUT →</label><input id="runtime-input" autocomplete="off" placeholder="输入值后按 Enter"><button class="primary">提交</button></form></div><div id="diagnostics" class="tab-pane" hidden></div><div id="trace" class="tab-pane" hidden><div class="pane-actions"><button id="csv">↓ CSV</button><button id="xlsx">↓ Excel</button><label><input id="trace-blank" type="checkbox"> 填空练习</label><button id="grade-trace">批改本页</button><span id="trace-grade"></span><select id="trace-filter" aria-label="Trace row policy"><option value="all">每条语句</option><option value="changes">仅变量变化</option><option value="modules">模块进入/返回</option><option value="loops">每次循环</option><option value="branches">IF/CASE 分支</option><option value="left-to-right">从左到右</option></select><input id="trace-columns" aria-label="Trace columns" placeholder="列顺序，如 I, Total"><label><input id="hide-repeats" type="checkbox"> 隐藏重复值</label></div><div class="pane-actions"><button id="trace-prev">上一页</button><span id="trace-page" aria-live="polite"></span><button id="trace-next">下一页</button></div><div id="trace-table"></div></div><div id="flow" class="tab-pane" hidden><select id="flow-module" aria-label="Flowchart module"></select><div id="flow-content"></div></div><div id="ast" class="tab-pane" hidden><select id="ast-mode" aria-label="AST or Tokens"><option>AST</option><option>Tokens</option></select><pre id="ast-content"></pre></div><div id="export" class="tab-pane" hidden><div class="pane-actions"><select id="target" aria-label="转换语言 / Target language"><option value="python">Python 3</option><option value="java">Java 17+</option><option value="vb">VB.NET</option></select><button id="convert">转换</button><button id="export-download" disabled>↓ 下载</button><span>完整类型与虚拟文件语义 · 独立程序，仅依赖目标语言标准库。</span></div><pre id="export-content"></pre></div><div id="reference" class="tab-pane" hidden></div><div id="practice" class="tab-pane" hidden></div></section></main><footer><span><i></i> 不上传源码 · 在浏览器 Worker 中执行</span><span id="runtime-info">指令上限 100,000 · 确定性随机种子</span></footer></div><dialog id="file-dialog" aria-labelledby="file-title"><form method="dialog"><h2 id="file-title">文件</h2><p id="file-record-note" hidden>此文件包含随机记录；修改文本会保留所有记录。 / Random records will be preserved.</p><textarea aria-labelledby="file-title" id="file-text" spellcheck="false"></textarea><div class="dialog-actions"><button value="cancel">取消</button><button id="file-save" value="save" class="primary">保存</button></div></form></dialog>`;
+$("editor").insertAdjacentHTML(
+  "afterend",
+  `<div class="analysis-controls"><progress id="analysis-progress" aria-label="语言分析进度" hidden></progress><span id="analysis-state" role="status" aria-live="polite">等待分析</span><button id="analysis-cancel" hidden>取消分析</button><button id="analysis-resume" hidden>重新分析</button></div>`,
+);
+$("analysis-cancel").onclick = () => {
+  analysisPaused = true;
+  analysisController.cancel();
+};
+$("analysis-resume").onclick = () => {
+  analysisPaused = false;
+  void diagnose(editor.state.doc.toString());
+  forceLinting(editor);
+};
 const highlight = StateEffect.define<number>();
 const currentLine = StateField.define<DecorationSet>({
   create: () => Decoration.none,
@@ -280,6 +322,11 @@ const createLanguageSupport = () =>
     },
   });
 const indentConfig = new Compartment();
+const setupConfig = new Compartment(),
+  hoverConfig = new Compartment(),
+  completionConfig = new Compartment(),
+  lintConfig = new Compartment(),
+  readOnlyConfig = new Compartment();
 const editor = new EditorView({
   state: EditorState.create({
     doc: settings.getItem("source") ?? examples[0].code,
@@ -289,6 +336,23 @@ const editor = new EditorView({
         spellcheck: "false",
       }),
       EditorView.domEventHandlers({
+        beforeinput(event, view) {
+          if (
+            event.inputType !== "insertText" ||
+            event.isComposing ||
+            !event.data ||
+            event.data.length < 20000 ||
+            view.state.readOnly ||
+            !event.cancelable
+          )
+            return false;
+          event.preventDefault();
+          view.dispatch(view.state.replaceSelection(event.data), {
+            annotations: Transaction.userEvent.of("input.paste"),
+            scrollIntoView: true,
+          });
+          return true;
+        },
         blur() {
           if (runMode === "blur") scheduleAutoRun();
         },
@@ -298,30 +362,42 @@ const editor = new EditorView({
           formatNumber: (n) => (continuationLines.has(n) ? "" : String(n)),
         }),
       ),
-      basicSetup,
+      setupConfig.of(basicSetup),
+      readOnlyConfig.of([]),
       indentConfig.of(indentUnit.of(" ".repeat(profile(language).indent))),
-      hoverTooltip((view, pos) => {
-        const word = view.state.wordAt(pos);
-        if (!word) return null;
-        const name = view.state.sliceDoc(word.from, word.to),
-          line = view.state.doc.lineAt(pos).number,
-          description = hover(view.state.doc.toString(), language, pos);
-        if (!description) return null;
-        return {
-          pos: word.from,
-          end: word.to,
-          create() {
-            const dom = document.createElement("div");
-            dom.className = "type-tooltip";
-            dom.textContent = description;
-            return { dom };
-          },
-        };
-      }),
+      hoverConfig.of(
+        hoverTooltip(async (view, pos) => {
+          if (examMode) return null;
+          const word = view.state.wordAt(pos);
+          if (!word) return null;
+          const doc = view.state.doc;
+          let description: string | undefined;
+          try {
+            description = await languageQuery<string | undefined>("hover", {
+              position: pos,
+            });
+          } catch {
+            return null;
+          }
+          if (examMode || view.state.doc !== doc) return null;
+          if (!description) return null;
+          return {
+            pos: word.from,
+            end: word.to,
+            create() {
+              const dom = document.createElement("div");
+              dom.className = "type-tooltip";
+              dom.textContent = description;
+              return { dom };
+            },
+          };
+        }),
+      ),
       keymap.of([
         {
           key: "F9",
           run: (view) => {
+            if (examMode) return true;
             const line = view.state.doc.lineAt(
               view.state.selection.main.head,
             ).number;
@@ -422,67 +498,86 @@ const editor = new EditorView({
         }
         return null;
       }),
-      autocompletion({
-        override: [
-          (context) => {
-            const w = context.matchBefore(/[\w]*/);
-            if (
-              !w ||
-              (w.from === w.to &&
-                !context.explicit &&
-                context.state.sliceDoc(w.from - 1, w.from) !== ".")
-            )
-              return null;
-            return {
-              from: w.from,
-              options: completionItems(
-                context.state.doc.toString(),
-                language,
-                context.pos,
+      completionConfig.of(
+        autocompletion({
+          override: [
+            async (context) => {
+              if (examMode) return null;
+              const w = context.matchBefore(/[\w]*/);
+              if (
+                !w ||
+                (w.from === w.to &&
+                  !context.explicit &&
+                  context.state.sliceDoc(w.from - 1, w.from) !== ".")
               )
-                .map<Completion>((item) => ({
-                  ...item,
-                  info: item.detail + "\n" + item.info,
-                }))
-                .concat([
-                  snippetCompletion(
-                    `IF \${condition} THEN\n${" ".repeat(profile(language).indent)}\${statement}\nENDIF`,
-                    { label: "IF … THEN", type: "keyword" },
-                  ),
-                  snippetCompletion(
-                    `FOR \${I} ← \${1} TO \${10}\n${" ".repeat(profile(language).indent)}\${statement}\nNEXT \${I}`,
-                    { label: "FOR … NEXT", type: "keyword" },
-                  ),
-                ]),
-            };
+                return null;
+              let items: LanguageCompletion[];
+              try {
+                items = await languageQuery<LanguageCompletion[]>(
+                  "completion",
+                  {
+                    position: context.pos,
+                  },
+                );
+              } catch {
+                return null;
+              }
+              if (
+                examMode ||
+                context.aborted ||
+                !editor.hasFocus ||
+                context.state.doc !== editor.state.doc
+              )
+                return null;
+              return {
+                from: w.from,
+                options: items
+                  .map<Completion>((item) => ({
+                    ...item,
+                    info: item.detail + "\n" + item.info,
+                  }))
+                  .concat([
+                    snippetCompletion(
+                      `IF \${condition} THEN\n${" ".repeat(profile(language).indent)}\${statement}\nENDIF`,
+                      { label: "IF … THEN", type: "keyword" },
+                    ),
+                    snippetCompletion(
+                      `FOR \${I} ← \${1} TO \${10}\n${" ".repeat(profile(language).indent)}\${statement}\nNEXT \${I}`,
+                      { label: "FOR … NEXT", type: "keyword" },
+                    ),
+                  ]),
+              };
+            },
+          ],
+        }),
+      ),
+      lintConfig.of(
+        linter(
+          async (view) => {
+            const ds = await diagnose(view.state.doc.toString());
+            return ds.slice(0, 100).map((d) => {
+              const l = view.state.doc.line(
+                Math.min(Math.max(1, d.line), view.state.doc.lines),
+              );
+              return {
+                from: Math.min(
+                  view.state.doc.length,
+                  d.from ?? l.from + Math.max(0, d.column - 1),
+                ),
+                to: Math.min(view.state.doc.length, d.to ?? l.to),
+                actions: d.actions?.map((a) => ({
+                  name: a.name,
+                  apply(view: EditorView) {
+                    view.dispatch({ changes: a.edits });
+                  },
+                })),
+                severity: d.severity,
+                message: `${d.code} · ${d.message}\n${d.source.doc} (${d.source.version}, ${d.source.section}; ${d.source.verified ? "官方来源" : "策略"})`,
+              };
+            });
           },
-        ],
-      }),
-      linter(
-        async (view) => {
-          const ds = await diagnose(view.state.doc.toString());
-          return ds.slice(0, 100).map((d) => {
-            const l = view.state.doc.line(
-              Math.min(Math.max(1, d.line), view.state.doc.lines),
-            );
-            return {
-              from: Math.min(
-                view.state.doc.length,
-                d.from ?? l.from + Math.max(0, d.column - 1),
-              ),
-              to: Math.min(view.state.doc.length, d.to ?? l.to),
-              actions: d.actions?.map((a) => ({
-                name: a.name,
-                apply(view: EditorView) {
-                  view.dispatch({ changes: a.edits });
-                },
-              })),
-              severity: d.severity,
-              message: `${d.code} · ${d.message}\n${d.source.doc} (${d.source.version}, ${d.source.section}; ${d.source.verified ? "官方来源" : "策略"})`,
-            };
-          });
-        },
-        { delay: 400 },
+          { delay: 400 },
+        ),
       ),
       currentLine,
       gutter({
@@ -501,6 +596,7 @@ const editor = new EditorView({
         initialSpacer: () => marker,
         domEventHandlers: {
           mousedown(view, line) {
+            if (examMode) return true;
             const n = view.state.doc.lineAt(line.from).number;
             breakpoints.has(n) ? breakpoints.delete(n) : breakpoints.add(n);
             view.dispatch({});
@@ -514,6 +610,13 @@ const editor = new EditorView({
       }),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
+          analysisController.invalidate();
+          queryController.invalidate();
+          if (!examMode && !analysisPaused) {
+            clearInterval(analysisClock);
+            analysisStatus = { status: "pending", startedAt: Date.now() };
+            renderAnalysisStatus();
+          }
           worker?.terminate();
           worker = undefined;
           busy = paused = false;
@@ -524,16 +627,13 @@ const editor = new EditorView({
             $("input-form").hidden = true;
             buttons();
           });
-          const saved = settings.setItem("source", update.state.doc.toString());
-          $("save-state").textContent = saved
-            ? "已保存本机"
-            : "未保存 · 请下载";
+          persistEditorSource(update.state.doc.toString());
           invalidateConversion();
           breakpoints.clear();
           clearTimeout(diagnosticTimer);
           diagnosticTimer = setTimeout(() => {
             diagnose(editor.state.doc.toString());
-            refreshTab();
+            if (tab === "flow" || tab === "ast") refreshTab();
           }, 450);
           if (runMode === "change") scheduleAutoRun();
         }
@@ -541,11 +641,16 @@ const editor = new EditorView({
           const a = update.state.doc.lineAt(update.state.selection.main.head);
           $("cursor").textContent =
             `Ln ${a.number}, Col ${update.state.selection.main.head - a.from + 1}`;
-          const hint = signatureHelp(
-            update.state.sliceDoc(0, update.state.selection.main.head),
-            language,
-            userSignatureList,
-          );
+          const hint = examMode
+            ? undefined
+            : signatureHelp(
+                update.state.sliceDoc(
+                  Math.max(0, update.state.selection.main.head - 5000),
+                  update.state.selection.main.head,
+                ),
+                language,
+                userSignatureList,
+              );
           $("signature-help").hidden = !hint;
           if (hint)
             $("signature-help").textContent =
@@ -563,11 +668,13 @@ const editor = new EditorView({
 let latestDiagnostics: Diagnostic[] = [];
 let diagnosticTimer: ReturnType<typeof setTimeout>;
 async function diagnose(source: string) {
+  if (examMode) return [];
   const requestedProfile = analysisProfileKey();
   let d: Diagnostic[];
   try {
     d = await analyzeAsync(source);
   } catch (e: any) {
+    if (e.name === "AbortError") return [];
     d = [
       {
         code: "ANALYSIS",
@@ -584,32 +691,65 @@ async function diagnose(source: string) {
     requestedProfile !== analysisProfileKey()
   )
     return d;
+  if (examMode) return [];
   latestDiagnostics = d;
   $("diagnostic-count").textContent = String(d.length);
+  diagnosticPage = 0;
+  renderDiagnostics();
+  return d;
+}
+let diagnosticPage = 0;
+const diagnosticPageSize = 100;
+function renderDiagnostics() {
+  const d = latestDiagnostics;
+  const start = diagnosticPage * diagnosticPageSize;
   $("diagnostics").innerHTML = d.length
-    ? d
+    ? (d.length > diagnosticPageSize
+        ? `<div class="pane-actions"><button id="diagnostic-prev" ${diagnosticPage === 0 ? "disabled" : ""}>上一页</button><span>第 ${diagnosticPage + 1} / ${Math.ceil(d.length / diagnosticPageSize)} 页 · 共 ${d.length} 条完整诊断</span><button id="diagnostic-next" ${start + diagnosticPageSize >= d.length ? "disabled" : ""}>下一页</button><button id="diagnostic-save">下载全部诊断</button></div>`
+        : "") +
+      d
+        .slice(start, start + diagnosticPageSize)
         .map(
           (x, index) =>
-            `<div class="diagnostic ${x.severity}"><button class="diagnostic-jump" data-line="${x.line}"><strong>${escape(x.code)}</strong><span>${escape(x.message)}</span><small>Line ${x.line} · ${escape(x.source.doc)} · ${escape(x.source.section)} · ${x.source.verified ? "规范来源" : "工程策略"}</small></button>${(x.actions || []).map((a, i) => `<button class="diagnostic-fix" data-fix="${index}:${i}">${escape(a.name)}</button>`).join("")}</div>`,
+            `<div class="diagnostic ${x.severity}"><button class="diagnostic-jump" data-line="${x.line}"><strong>${escape(x.code)}</strong><span>${escape(x.message)}</span><small>Line ${x.line} · ${escape(x.source.doc)} · ${escape(x.source.section)} · ${x.source.verified ? "规范来源" : "工程策略"}</small></button>${(x.actions || []).map((a, i) => `<button class="diagnostic-fix" data-fix="${start + index}:${i}">${escape(a.name)}</button>`).join("")}</div>`,
         )
         .join("")
     : '<div class="empty">未发现静态诊断。运行时仍会检查类型、边界和文件状态。</div>';
 
-  return d;
+  if ($("diagnostic-prev"))
+    $("diagnostic-prev").onclick = () => {
+      diagnosticPage--;
+      renderDiagnostics();
+    };
+  if ($("diagnostic-next"))
+    $("diagnostic-next").onclick = () => {
+      diagnosticPage++;
+      renderDiagnostics();
+    };
+  if ($("diagnostic-save"))
+    $("diagnostic-save").onclick = () =>
+      download(
+        "diagnostics.json",
+        JSON.stringify(d, null, 2),
+        "application/json",
+      );
 }
 function status(s: string) {
   $("status").textContent = s;
 }
 function buttons() {
-  ($("run") as HTMLButtonElement).disabled = !filesReady || (busy && !paused);
+  const locked = examLocked;
+  ($("run") as HTMLButtonElement).disabled =
+    locked || !filesReady || (busy && !paused);
   ($("pause") as HTMLButtonElement).disabled =
-    !busy || paused || fastBusy || !$("input-form").hidden;
-  $<HTMLButtonElement>("step").disabled = !filesReady || (busy && !paused);
+    examMode || !busy || paused || fastBusy || !$("input-form").hidden;
+  $<HTMLButtonElement>("step").disabled =
+    examMode || !filesReady || (busy && !paused);
   for (const id of ["over", "out"])
-    ($(id) as HTMLButtonElement).disabled = !paused;
+    ($(id) as HTMLButtonElement).disabled = examMode || !paused;
   ($("stop") as HTMLButtonElement).disabled = !busy;
   for (const id of ["add-file", "import-file", "backup-files"])
-    $<HTMLButtonElement>(id).disabled = !filesReady;
+    $<HTMLButtonElement>(id).disabled = examMode || !filesReady;
 }
 function clearDebugState() {
   trace = [];
@@ -631,6 +771,7 @@ function invalidateConversion() {
   $<HTMLButtonElement>("export-download").disabled = true;
 }
 function scheduleAutoRun() {
+  if (examMode) return;
   clearTimeout(autoRunTimer);
   const source = editor.state.doc.toString(),
     key = analysisProfileKey();
@@ -704,6 +845,8 @@ function inspectorValue(k: string, v: any, depth = 0): string {
   return `<div class="variable scalar"><span>${escape(k)}</span><code title="${escape(text)}" tabindex="0">${escape(text)}</code></div>`;
 }
 function start(mode: string) {
+  examController?.tick();
+  if (examLocked || (examMode && mode !== "run")) return;
   if (!filesReady || (busy && !paused)) return;
   clearTimeout(autoRunTimer);
   if (busy && paused) {
@@ -762,9 +905,12 @@ function start(mode: string) {
       status("执行完成");
       mark(0);
       trace = d.trace;
-      files = d.files;
+      if (examMode) examFiles = d.files;
+      else {
+        files = d.files;
+        void persistFiles();
+      }
       invalidateConversion();
-      void persistFiles();
       if (d.state) renderState(d.state);
       else if (lastEvent) renderState(lastEvent);
       renderFiles();
@@ -777,7 +923,8 @@ function start(mode: string) {
       paused = false;
       status("执行错误");
       mark(d.line);
-      if (d.files) {
+      if (d.files && examMode) examFiles = d.files;
+      if (d.files && !examMode) {
         files = d.files;
         renderFiles();
         void persistFiles();
@@ -806,7 +953,8 @@ function start(mode: string) {
     dialect: language,
     mode,
     breakpoints: [...breakpoints],
-    files,
+    files: examMode ? examFiles : files,
+    trace: !examMode && !fastBusy,
     maxSteps: maxSteps(),
     seed: randomSeed(),
     strict: strictness === "exam",
@@ -851,6 +999,8 @@ $("pause").onclick = () => worker?.postMessage({ type: "pause" });
 $("stop").onclick = stop;
 $("input-form").onsubmit = (e) => {
   e.preventDefault();
+  examController?.tick();
+  if (examLocked) return;
   worker?.postMessage({
     type: "input",
     value: $<HTMLInputElement>("runtime-input").value,
@@ -860,14 +1010,16 @@ $("input-form").onsubmit = (e) => {
   status("运行中");
   buttons();
 };
-function setSource(s: string) {
+function setSource(s: string, addToHistory = true) {
   stop();
   breakpoints.clear();
   editor.dispatch({
     changes: { from: 0, to: editor.state.doc.length, insert: s },
+    annotations: Transaction.addToHistory.of(addToHistory),
   });
 }
-function setDialect(id: DialectId) {
+function setDialect(id: DialectId, internal = false) {
+  if (examMode && !internal) return;
   stop();
   clearDebugState();
   invalidateConversion();
@@ -901,6 +1053,7 @@ $("examples").onchange = () => {
   $<HTMLSelectElement>("examples").value = "";
 };
 $("format").onclick = () => {
+  if (examMode) return;
   const source = format(editor.state.doc.toString(), language);
   editor.dispatch({
     changes: { from: 0, to: editor.state.doc.length, insert: source },
@@ -922,6 +1075,7 @@ $("source-upload").onchange = async () => {
   try {
     if (f) {
       const source = await f.text();
+      if (examMode) return;
       setSource(source);
       sourceName = f.name;
       settings.setItem("sourceName", sourceName);
@@ -941,6 +1095,7 @@ $("clear-breakpoints").onclick = () => {
 };
 $("watch-form").onsubmit = (e) => {
   e.preventDefault();
+  if (examMode) return;
   const input = $<HTMLInputElement>("watch-input");
   if (input.value.trim()) watches.add(input.value.trim());
   input.value = "";
@@ -969,6 +1124,7 @@ $("watches").onclick = (e) => {
   }
 };
 function showTab(name: string) {
+  if (examMode && name !== "console") return;
   tab = name;
   document
     .querySelectorAll<HTMLElement>(".tab-pane")
@@ -991,7 +1147,7 @@ document.querySelectorAll<HTMLElement>("[data-tab]").forEach((e) => {
   e.onclick = () => showTab(name);
   e.onkeydown = (event) => {
     const tabs = Array.from(
-        document.querySelectorAll<HTMLElement>("[data-tab]"),
+        document.querySelectorAll<HTMLElement>("[data-tab]:not(:disabled)"),
       ),
       index = tabs.indexOf(e);
     const next =
@@ -1187,6 +1343,7 @@ $("flow-content").onclick = (e) => {
 $("ast-mode").onchange = renderAST;
 $("target").onchange = invalidateConversion;
 $("convert").onclick = async () => {
+  if (examMode) return;
   const source = editor.state.doc.toString(),
     profileKey = analysisProfileKey(),
     target = $<HTMLSelectElement>("target").value as Target;
@@ -1196,6 +1353,7 @@ $("convert").onclick = async () => {
   try {
     const { transpile } = await import("../core/transpile");
     if (
+      examMode ||
       source !== editor.state.doc.toString() ||
       profileKey !== analysisProfileKey() ||
       target !== $<HTMLSelectElement>("target").value ||
@@ -1220,7 +1378,7 @@ $("convert").onclick = async () => {
     $("export-content").textContent = e.message;
     $<HTMLButtonElement>("export-download").disabled = true;
   } finally {
-    $<HTMLButtonElement>("convert").disabled = false;
+    $<HTMLButtonElement>("convert").disabled = examMode;
   }
 };
 $("export-download").onclick = () => {
@@ -1447,6 +1605,7 @@ $("file-upload").onchange = async () => {
 $("diagnostics").onclick = (e) => {
   const fix = (e.target as Element).closest<HTMLElement>("[data-fix]");
   if (fix) {
+    if (examMode) return;
     const [index, action] = fix.dataset.fix!.split(":").map(Number);
     const edits = latestDiagnostics[index]?.actions?.[action]?.edits;
     if (edits) editor.dispatch({ changes: edits });
@@ -1489,16 +1648,22 @@ loadFiles()
   });
 diagnose(editor.state.doc.toString());
 
-function jumpDefinition() {
+async function jumpDefinition() {
+  if (examMode) return;
   const word = editor.state.wordAt(editor.state.selection.main.head);
   if (!word) return;
-  const def = definition(
-    editor.state.doc.toString(),
-    language,
-    editor.state.sliceDoc(word.from, word.to),
-    editor.state.doc.lineAt(word.from).number,
-    word.from - editor.state.doc.lineAt(word.from).from + 1,
-  );
+  const doc = editor.state.doc;
+  let def: Definition | undefined;
+  try {
+    def = await languageQuery<Definition | undefined>("definition", {
+      name: editor.state.sliceDoc(word.from, word.to),
+      line: doc.lineAt(word.from).number,
+      column: word.from - doc.lineAt(word.from).from + 1,
+    });
+  } catch {
+    return;
+  }
+  if (doc !== editor.state.doc) return;
   if (def) {
     editor.dispatch({
       selection: { anchor: editor.state.doc.line(def.line).from },
@@ -1507,27 +1672,30 @@ function jumpDefinition() {
     editor.focus();
   }
 }
-function renameSymbol() {
+async function renameSymbol() {
+  if (examMode) return;
   const word = editor.state.wordAt(editor.state.selection.main.head);
   if (!word) return;
   const name = editor.state.sliceDoc(word.from, word.to),
     replacement = prompt("重命名 / Rename " + name, name);
   if (!replacement || replacement === name) return;
   try {
-    const text = rename(
-      editor.state.doc.toString(),
-      language,
+    const doc = editor.state.doc;
+    const text = await languageQuery<string>("rename", {
       name,
       replacement,
-      editor.state.doc.lineAt(word.from).number,
-      word.from - editor.state.doc.lineAt(word.from).from + 1,
-    );
+      line: doc.lineAt(word.from).number,
+      column: word.from - doc.lineAt(word.from).from + 1,
+    });
+    if (doc !== editor.state.doc) return;
     editor.dispatch({
       changes: { from: 0, to: editor.state.doc.length, insert: text },
     });
   } catch (e: any) {
-    log(e.message, "error");
-    showTab("console");
+    if (e.name !== "AbortError") {
+      log(e.message, "error");
+      showTab("console");
+    }
   }
 }
 status("就绪");
@@ -1583,4 +1751,203 @@ $("files").ondrop = async (e) => {
     log("无法导入文件 / Import failed: " + error.message, "error");
     showTab("console");
   }
+};
+
+function persistEditorSource(source: string) {
+  if (examMode) {
+    // Expiry can lock and restore the last timely answer. Run it after the
+    // current CodeMirror transaction, since it may dispatch another change.
+    queueMicrotask(() => {
+      if (examMode) examController?.sourceChanged();
+    });
+    $("save-state").textContent = "考试答卷 · 独立保存";
+    return;
+  }
+  const saved = settings.setItem("source", source);
+  $("save-state").textContent = saved ? "已保存本机" : "未保存 · 请下载";
+  practiceController?.sourceChanged();
+}
+
+function replaceWorkspaceSource(source: string) {
+  editor.dispatch({ effects: setupConfig.reconfigure([]) });
+  setSource(source, false);
+  editor.dispatch({
+    effects: setupConfig.reconfigure(examMode ? minimalSetup : basicSetup),
+  });
+}
+
+function currentEnvironment(): ExamEnvironment {
+  return {
+    dialect: language,
+    guideVersion,
+    strictness,
+    styleChecks: currentProfile().styleChecks,
+    logicalPrecedence: currentProfile().logicalPrecedence,
+    policies: { ...policyState },
+    maxSteps: maxSteps(),
+    seed: randomSeed(),
+    runMode,
+    fastMode: $<HTMLInputElement>("fast-mode").checked,
+    sourceName,
+  };
+}
+function applyEnvironment(config: ExamEnvironment) {
+  if (!validConfig(config)) return;
+  stop();
+  guideVersion = config.guideVersion;
+  strictness = config.strictness;
+  policyState = { ...config.policies };
+  runMode = config.runMode;
+  sourceName = config.sourceName;
+  for (const [key, value] of Object.entries({
+    guideVersion,
+    strictness,
+    styleChecks: String(config.styleChecks),
+    logicalPrecedence: config.logicalPrecedence,
+    policies: JSON.stringify(policyState),
+    maxSteps: String(config.maxSteps),
+    seed: String(config.seed),
+    runMode,
+    sourceName,
+  }))
+    settings.setItem(key, value);
+  $<HTMLSelectElement>("run-mode").value = runMode;
+  $<HTMLInputElement>("fast-mode").checked = config.fastMode;
+  $("source-name").textContent = sourceName;
+  setDialect(config.dialect, true);
+  syncExamControls();
+}
+
+const learningExtensions = {
+  hover: hoverConfig.get(editor.state) ?? [],
+  completion: completionConfig.get(editor.state) ?? [],
+  lint: lintConfig.get(editor.state) ?? [],
+};
+function syncExamControls() {
+  document.body.classList.toggle("exam-active", examMode);
+  for (const id of [
+    "dialect",
+    "examples",
+    "run-mode",
+    "fast-mode",
+    "format",
+    "upload",
+    "source-upload",
+    "examples-nav",
+    "help-nav",
+    "practice-open",
+    "convert",
+    "watch-input",
+    "clear-breakpoints",
+  ])
+    $<HTMLButtonElement>(id).disabled = examMode;
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-tab]")
+    .forEach((button) => {
+      button.disabled = examMode && button.dataset.tab !== "console";
+    });
+  document
+    .querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+      "#reference input, #reference select",
+    )
+    .forEach((input) => (input.disabled = examMode));
+  if (examMode) {
+    $("signature-help").hidden = true;
+    $<HTMLButtonElement>("export-download").disabled = true;
+    showTab("console");
+  }
+  buttons();
+}
+function examStateChanged(session: ExamSession | null) {
+  const changedMode = examMode !== !!session;
+  examMode = !!session;
+  examLocked = !!session && session.status !== "running";
+  clearTimeout(autoRunTimer);
+  clearTimeout(diagnosticTimer);
+  analysisController.cancel();
+  queryController.cancel();
+  if (changedMode) {
+    examFiles = {};
+    // Reset history at the document boundary, so Undo cannot switch between a
+    // normal draft and a separately saved examination answer.
+    editor.dispatch({ effects: setupConfig.reconfigure([]) });
+    editor.dispatch({
+      effects: [
+        setupConfig.reconfigure(examMode ? minimalSetup : basicSetup),
+        hoverConfig.reconfigure(examMode ? [] : learningExtensions.hover),
+        completionConfig.reconfigure(
+          examMode ? [] : learningExtensions.completion,
+        ),
+        lintConfig.reconfigure(examMode ? [] : learningExtensions.lint),
+      ],
+    });
+  }
+  editor.dispatch({
+    effects: readOnlyConfig.reconfigure([
+      EditorState.readOnly.of(examLocked),
+      EditorView.editable.of(!examLocked),
+    ]),
+  });
+  if (examMode) {
+    latestDiagnostics = [];
+    $("diagnostic-count").textContent = "0";
+    editor.dispatch(setDiagnostics(editor.state, []));
+  } else {
+    analysisPaused = false;
+  }
+  clearDebugState();
+  syncExamControls();
+  practiceController?.refresh();
+}
+
+// Practice is mounted first so a restored exam can immediately suspend its
+// independent grader without copying the exam answer into a practice draft.
+practiceController = mountPractice({
+  container: $("practice"),
+  settings,
+  readSource: () => editor.state.doc.toString(),
+  writeSource: replaceWorkspaceSource,
+  readDialect: () => language,
+  captureEnvironment: currentEnvironment,
+  restoreEnvironment: (config) => {
+    if (validConfig(config)) applyEnvironment(config);
+  },
+  applyDialect: (dialect) =>
+    applyEnvironment({
+      ...currentEnvironment(),
+      dialect,
+      guideVersion: "2026",
+      strictness: "exam",
+      styleChecks: false,
+      logicalPrecedence: "standard",
+      policies: { ...defaultPolicies },
+      seed: 123456789,
+      maxSteps: 50000,
+      runMode: "manual",
+      fastMode: false,
+      sourceName: "practice-answer.pseudo",
+    }),
+  examActive: () => examMode,
+  focusEditor: () => editor.focus(),
+});
+examController = createExamController({
+  settings,
+  getSource: () => editor.state.doc.toString(),
+  setSource: replaceWorkspaceSource,
+  getConfig: currentEnvironment,
+  applyConfig: applyEnvironment,
+  stopExecution: stop,
+  onStateChange: examStateChanged,
+});
+document
+  .querySelector(".toolbar")!
+  .insertAdjacentElement("afterend", examController.element);
+$("exam-open").onclick = () => {
+  const details = $<HTMLDetailsElement>("exam-details");
+  details.open = true;
+  details.scrollIntoView({ block: "nearest", behavior: "smooth" });
+};
+$("practice-open").onclick = () => {
+  showTab("practice");
+  $("practice").scrollIntoView({ block: "nearest", behavior: "smooth" });
 };

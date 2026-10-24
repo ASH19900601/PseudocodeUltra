@@ -139,7 +139,7 @@ onmessage = ({ data: d }) => {
         seed: d.seed,
         profileOptions: d.profileOptions,
         fast: d.fast,
-        trace: !d.fast,
+        trace: d.trace ?? !d.fast,
         policies: d.policies,
       });
       result = machine.generator.next();

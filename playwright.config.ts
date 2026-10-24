@@ -3,6 +3,8 @@ import { browserExecutable } from "./scripts/browser";
 export default defineConfig({
   testDir: "./conformance/browser",
   fullyParallel: false,
+  // Large-document browser workloads each create their own analysis workers.
+  workers: 2,
   use: {
     baseURL: "http://127.0.0.1:5173",
     headless: true,

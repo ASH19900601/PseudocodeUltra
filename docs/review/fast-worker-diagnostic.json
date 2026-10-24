@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-24",
+  "environment": "Windows installed Edge, isolated execution Worker served by Vite; main application not loaded",
+  "source": "DECLARE I,Total:INTEGER\nTotal ← 0\nFOR I ← 1 TO 10000000\nTotal ← Total+1\nNEXT I\nOUTPUT Total",
+  "commonOptions": { "fast": true, "maxSteps": 30000000, "dialect": "0478" },
+  "observations": [
+    {
+      "trace": false,
+      "elapsedMs": 164.7,
+      "status": "done",
+      "output": "10000000",
+      "steps": 20000004,
+      "events": 0,
+      "traceRows": 0
+    },
+    {
+      "trace": true,
+      "elapsedMs": 2500.6,
+      "status": "terminated-after-observation",
+      "output": null,
+      "events": 116000,
+      "batches": 464
+    }
+  ],
+  "rootCause": "The exam integration initially passed trace: !examMode, overriding the fast-mode no-trace default in ordinary sessions and disabling the runtime fast path. The UI still labeled it fast mode.",
+  "fix": "Pass trace: !examMode && !fastBusy. Retain the existing browser timeout and assert the fast program leaves no trace rows."
+}

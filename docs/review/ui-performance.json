@@ -1,10 +1,11 @@
 {
   "date": "2026-10-24",
   "environment": "Windows / actual Edge / development server",
-  "scenario": "Paste a 100000-line scalar program in a single editor input, then edit its last expression",
+  "scenario": "Insert a 100000-line scalar program with Playwright keyboard.insertText, then edit its last expression",
   "status": "incomplete-unresponsive",
   "completed": false,
   "timingMs": null,
-  "observation": "The single large paste did not return within the observation window and the browser test was stopped. No completed UI latency can be reported. The 13.49 ms core incremental benchmark must not be presented as editor end-to-end latency.",
-  "followUp": "Profile large-paste editor layout, lint scheduling and memory usage separately; this workload has not met a usable end-to-end acceptance criterion."
+  "observation": "The native insertText command did not return within the observation window and the browser test was stopped. No completed latency can be reported for this historical run. The 13.49 ms core incremental benchmark must not be presented as editor end-to-end latency.",
+  "correction": "This historical scenario was previously mislabeled as clipboard paste. Follow-up profiling distinguished Chromium native insertText DOM expansion from CodeMirror real Ctrl+V clipboard transactions. Real clipboard baseline returned in 96 ms. See large-document-root-cause.json.",
+  "followUp": "The subsequent implementation and current browser verification are documented in ../FEATURES_2026-10-24.md and features-validation/. This historical incomplete result is preserved, not presented as the current version."
 }

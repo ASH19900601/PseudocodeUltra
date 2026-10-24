@@ -1087,3 +1087,69 @@ dialog textarea {
   outline: 2px dashed var(--accent);
   background: #e6f5f0;
 }
+
+.analysis-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 5px 12px;
+  min-height: 28px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--muted);
+}
+.analysis-controls progress {
+  width: 70px;
+  height: 5px;
+  accent-color: var(--accent);
+}
+.analysis-controls button {
+  padding: 3px 7px;
+  font-size: 10px;
+}
+.analysis-controls [hidden] {
+  display: none !important;
+}
+.shell > .exam-panel {
+  margin: 0 0 12px;
+}
+#exam-open,
+#practice-open {
+  font-size: 11px;
+  padding: 6px 9px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.exam-active main {
+  grid-template-columns: minmax(0, 1fr);
+}
+.exam-active .inspector,
+.exam-active .analysis-controls,
+.exam-active .tabs button:not([data-tab="console"]) {
+  display: none;
+}
+.exam-active .editor-panel,
+.exam-active .output-panel {
+  grid-column: 1;
+}
+.exam-active .editor-panel {
+  outline: 1px solid var(--accent);
+}
+.exam-active .cm-content[contenteditable="false"] {
+  background: var(--code);
+}
+@media (max-width: 700px) {
+  .analysis-controls {
+    font-size: 10px;
+  }
+  #exam-open,
+  #practice-open {
+    font-size: 10px;
+    padding: 5px 6px;
+    margin-left: 0;
+  }
+  .exam-active main {
+    grid-template-rows: 450px 330px;
+  }
+}

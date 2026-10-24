@@ -99,6 +99,8 @@ test("fast worker mode executes large loop without tracing and remains stoppable
   await expect(page.locator("#status")).toHaveText("执行完成");
   await expect(page.locator("#console-output")).toContainText("10000000");
   await expect(page.locator("#runtime-info")).toContainText("高速模式，无追踪");
+  await page.locator('[data-tab="trace"]').click();
+  await expect(page.locator("#trace-table tbody tr")).toHaveCount(0);
 });
 test("multiline continuation numbers are hidden and code folds", async ({
   page,
@@ -158,6 +160,9 @@ test("function signatures and member completion work while editing", async ({
 test("M4 long traces paginate and preserve independently graded answers", async ({
   page,
 }) => {
+  await expect(page.locator("#run")).toBeEnabled();
+  await page.clock.install();
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1000);
   await code(page, "DECLARE I:INTEGER\nFOR I ← 1 TO 210\nOUTPUT I\nNEXT I");
   await page.locator("#run").click();
   await expect(page.locator("#status")).toHaveText("执行完成");
@@ -174,6 +179,9 @@ test("M4 long traces paginate and preserve independently graded answers", async 
   expect(key).toMatch(/^200:/);
   await answer.fill("wrong page two");
   await page.locator("#grade-trace").click();
+  await expect(answer).toHaveClass(/incorrect/);
+  // Pending editor analysis must not rebuild an unrelated runtime trace table.
+  await page.clock.runFor(500);
   await expect(answer).toHaveClass(/incorrect/);
   await page.locator("#trace-prev").click();
   await expect(page.locator(".trace-answer").first()).toHaveValue(
