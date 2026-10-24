@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-24",
+  "scope": "UI theme and workspace layout; development server",
+  "sourceSha256": "393aab166ba14643866f6f41c24ea92ca6c563d7d5f2a821aa1ae6c1dfd750f6",
+  "digestScope": "core/, web/, conformance/, scripts/, index.html, package.json, package-lock.json, tsconfig.json, playwright.config.ts, docs/spec-sources.json; sorted relative path followed by raw bytes",
+  "reference": "https://www.pseudocode.pro/0478",
+  "status": "passed",
+  "checks": {
+    "typecheck": "passed",
+    "core": {
+      "tests": 222,
+      "passed": 222,
+      "failed": 0
+    },
+    "browser": {
+      "startTime": "2026-10-24T10:44:15.270Z",
+      "duration": 43209.89,
+      "expected": 57,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "visual": "Actual installed Edge; 1440x1000 and 390x844; light/dark, flowchart, graded practice and running exam viewed; no page errors or horizontal overflow"
+  },
+  "notRun": [
+    "native execution suite: language/runtime/code generation unchanged",
+    "production build and packaging: not requested",
+    "official specification download verification: outside UI scope"
+  ],
+  "gitRemoteWrites": false
+}

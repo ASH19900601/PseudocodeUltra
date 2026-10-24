@@ -1,93 +1,195 @@
 .practice-panel {
-  padding: 12px;
+  padding: 14px;
+  color: var(--text);
+  font-size: 13px;
   line-height: 1.65;
   overflow-wrap: anywhere;
 }
-.practice-panel h3,
+.practice-panel h3 {
+  margin: 16px 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+}
 .practice-panel h4 {
-  margin: 12px 0 6px;
+  margin: 12px 0 5px;
+  font-size: 12px;
+  font-weight: 600;
 }
 .practice-panel p {
   margin: 6px 0;
 }
+.practice-panel .practice-intro {
+  margin-top: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
 .practice-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
+  gap: 6px;
   align-items: center;
-  margin: 10px 0;
+  margin: 12px 0;
 }
 .practice-controls label {
   display: flex;
+  flex: 1 1 100%;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 6px;
   align-items: center;
   min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 .practice-controls select {
+  flex: 1;
   max-width: 100%;
   min-width: 0;
 }
-.practice-controls button,
-.practice-history button {
+.practice-panel button,
+.practice-panel select {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-alt);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.practice-panel button {
   white-space: normal;
+}
+.practice-panel button:hover:enabled {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.practice-panel #practice-submit:enabled {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
 }
 .practice-panel .practice-notice {
   padding: 8px 10px;
-  border: 1px solid var(--border, #778399);
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 12px;
 }
 .practice-meta,
 .practice-footnote {
+  color: var(--muted);
   font-size: 12px;
-  opacity: 0.82;
 }
 .practice-samples {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
-  gap: 10px;
+  gap: 8px;
+  margin-top: 12px;
 }
 .practice-sample {
-  border: 1px solid var(--border, #778399);
-  border-radius: 6px;
-  padding: 8px 12px;
   min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-alt);
+}
+.practice-sample h4:first-child {
+  margin-top: 0;
+}
+.practice-sample p {
+  color: var(--muted);
+  font-size: 12px;
 }
 .practice-panel pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   margin: 5px 0;
-  padding: 7px;
-  background: var(--code, #f5f7fb);
-  color: var(--text, inherit);
-  border: 1px solid var(--border, #778399);
+  padding: 8px;
+  border: 1px solid var(--border);
   border-radius: 4px;
+  background: var(--code);
+  color: var(--text);
+  font:
+    12px/1.6 "Cascadia Code",
+    Consolas,
+    monospace;
+}
+.practice-results:not(:empty),
+.practice-history:not(:empty) {
+  margin-top: 16px;
+  padding-top: 2px;
+  border-top: 1px solid var(--border);
 }
 .practice-results ol {
-  padding-left: 25px;
+  padding-left: 24px;
 }
 .practice-results li {
   margin: 8px 0;
 }
-.practice-pass {
-  color: var(--accent, #117a55);
+.practice-results details {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.practice-results summary {
+  cursor: pointer;
+}
+.practice-pass,
+.practice-results #practice-score {
+  color: var(--success);
 }
 .practice-fail,
 .practice-stale,
+.practice-storage-warning,
+.practice-results:has(.practice-fail) #practice-score {
+  color: var(--warning);
+}
 .practice-storage-warning {
-  color: #b25b10;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--warning-soft);
+  font-size: 12px;
+}
+.practice-storage-warning[hidden] {
+  display: none;
 }
 .practice-history-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  margin: 7px 0;
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.practice-history-row:last-child {
+  border-bottom: 0;
 }
 .practice-history-row span {
   flex: 1 1 180px;
+  color: var(--muted);
 }
-.practice-footnote {
-  border-top: 1px solid var(--border, #778399);
-  padding-top: 7px;
+.practice-panel .practice-footnote {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 600px) {
+  .practice-panel {
+    padding: 10px;
+  }
+  .practice-controls label {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .practice-controls select {
+    width: 100%;
+    flex: auto;
+  }
 }

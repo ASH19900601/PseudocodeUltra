@@ -3,6 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      try {
+        document.documentElement.classList.toggle(
+          "dark",
+          localStorage.getItem("theme") === "dark",
+        );
+      } catch {
+        // Storage may be blocked; the default light theme remains usable.
+      }
+    </script>
+    <style>
+      html.dark {
+        background: #10121e;
+      }
+    </style>
     <meta name="theme-color" content="#101a27" />
     <title>Pseudocode Ultra · CAIE 编程工作台</title>
   </head>

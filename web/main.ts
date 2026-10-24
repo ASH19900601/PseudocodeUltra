@@ -17,20 +17,12 @@ import {
   GutterMarker,
 } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
-import {
-  StreamLanguage,
-  indentUnit,
-  foldService,
-  syntaxHighlighting,
-  HighlightStyle,
-  defaultHighlightStyle,
-} from "@codemirror/language";
+import { StreamLanguage, indentUnit, foldService } from "@codemirror/language";
 import {
   autocompletion,
   snippetCompletion,
   type Completion,
 } from "@codemirror/autocomplete";
-import { tags } from "@lezer/highlight";
 import { linter, forceLinting, setDiagnostics } from "@codemirror/lint";
 import {
   profile,
@@ -82,6 +74,7 @@ import {
 import { validConfig } from "../core/exam";
 import { mountPractice } from "./practice";
 import { defaultPolicies } from "../core/policies";
+import { editorAppearance } from "./editor-theme";
 import "./style.css";
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -91,6 +84,9 @@ const settings = createSettings(undefined, () =>
     $("save-state").textContent = "未保存 · 请下载";
   }),
 );
+let darkTheme = settings.getItem("theme") === "dark";
+document.documentElement.classList.toggle("dark", darkTheme);
+document.body.classList.toggle("dark", darkTheme);
 let language: DialectId = settingChoice(
   settings.getItem("dialect"),
   ["0478", "2210", "9618-AS", "9618-A2"],
@@ -258,7 +254,7 @@ const escape = (s: any) =>
       ]!,
   );
 $("app").innerHTML =
-  `<aside class="rail"><a class="brand" href="#" aria-label="Pseudocode Ultra">P<span>u</span></a><button id="workspace-nav" class="rail-active" title="Workspace">⌘</button><button id="examples-nav" title="Examples">▤</button><button id="help-nav" title="Language reference">?</button><div class="rail-bottom">CAIE</div></aside><div class="shell"><header><div><span class="eyebrow">COMPUTER SCIENCE LAB</span><h1>Pseudocode <em>Ultra</em></h1></div><div class="header-right"><span class="local-dot"></span>本地执行 · Local-first <button id="practice-open" title="原创练习">练习</button><button id="exam-open" title="考试练习">考试</button><button id="theme" title="Switch theme">◐</button></div></header><div id="storage-warning" class="storage-warning" role="alert" hidden>本机存储不可用或保存失败，部分内容可能仅在本次会话保留。请下载备份。 / Local storage failed; download a backup.</div><section class="toolbar"><div class="select-wrap"><label for="dialect">考试方言 / DIALECT</label><select id="dialect"><option>0478</option><option>2210</option><option>9618-AS</option><option>9618-A2</option></select></div><span class="divider"></span><button id="run" class="primary">▶ 运行 <kbd>Ctrl ↵</kbd></button><select id="run-mode" aria-label="运行方式 / Run mode"><option value="manual">手动运行</option><option value="change">输入后运行</option><option value="blur">失焦时运行</option></select><label class="fast-toggle" title="高速执行不生成追踪表，调试请关闭"><input id="fast-mode" type="checkbox">高速</label><button id="pause" disabled>Ⅱ 暂停</button><button id="step">↳ 单步</button><button id="over" disabled>↷ 跳过</button><button id="out" disabled>↑ 跳出</button><button id="stop" disabled>■ 停止</button><span class="toolbar-space"></span><button id="format">格式化</button><button id="print-pdf">PDF</button><button id="download">↓ 保存</button><button id="upload">↑ 打开</button><input id="source-upload" type="file" accept=".txt,.pseudo,.psc" hidden></section><main><section class="editor-panel panel"><div class="panel-heading"><div class="file-tab"><span class="file-icon">⌁</span> <span id="source-name">${escape(sourceName)}</span><span id="save-state" class="save-state" role="status">已保存本机</span></div><select id="examples" aria-label="Load example"><option value="">示例程序 / Examples</option>${examples.map((e, i) => `<option value="${i}">${e.name}</option>`).join("")}</select></div><div id="editor"></div><div id="signature-help" hidden></div><div class="editor-footer"><span id="cursor">Ln 1, Col 1</span><span>UTF-8 <span id="indent">4 spaces</span><button id="clear-breakpoints">清除断点</button></span></div></section><aside class="inspector panel"><div class="panel-heading"><h2>调试工作台 <small>DEBUGGER</small></h2><span id="status" class="status" role="status" aria-live="polite">就绪</span></div><div class="debug-section"><h3>变量 <small>VARIABLES</small></h3><div id="variables" class="empty">运行或单步执行后查看变量</div></div><div class="debug-section"><h3>监视表达式 <small>WATCH</small></h3><form id="watch-form"><input id="watch-input" placeholder="变量名称，例如 Total" aria-label="Watch variable"><button>＋</button></form><div id="watches"></div></div><div class="debug-section"><h3>调用栈 <small>CALL STACK</small></h3><div id="stack" class="empty">尚未进入子程序</div></div><div class="debug-section"><h3>虚拟文件 <small>FILES · IndexedDB</small></h3><div id="files"></div><button id="add-file">＋ 新建文件</button><button id="import-file">↑ 导入文件</button><button id="backup-files">↓ 备份全部</button><input id="file-upload" type="file" hidden></div><div class="debug-section"><h3>代码大纲 <small>OUTLINE</small></h3><div id="outline"></div></div><div class="policy-note"><span>ℹ</span><div>Cambridge 规范版本可配置<br><small>依据官方 Guide / Insert / v6 考纲实现。具体来源与模糊语义策略见语言参考。</small></div></div></aside><section class="output-panel panel"><nav class="tabs" role="tablist" aria-label="Output panels"><button data-tab="console" class="selected">终端 <span>CONSOLE</span></button><button data-tab="diagnostics">诊断 <span id="diagnostic-count">0</span></button><button data-tab="trace">追踪表</button><button data-tab="flow">流程图</button><button data-tab="ast">AST / Tokens</button><button data-tab="export">代码转换</button><button data-tab="reference">语言参考</button><button data-tab="practice">原创练习</button></nav><div id="console" class="tab-pane"><div id="console-output"><div class="terminal-hint">Pseudocode Ultra runtime<br><span>准备好了。点击运行，或点击行号旁设置断点后开始单步执行。</span></div></div><form id="input-form" hidden><label for="runtime-input">INPUT →</label><input id="runtime-input" autocomplete="off" placeholder="输入值后按 Enter"><button class="primary">提交</button></form></div><div id="diagnostics" class="tab-pane" hidden></div><div id="trace" class="tab-pane" hidden><div class="pane-actions"><button id="csv">↓ CSV</button><button id="xlsx">↓ Excel</button><label><input id="trace-blank" type="checkbox"> 填空练习</label><button id="grade-trace">批改本页</button><span id="trace-grade"></span><select id="trace-filter" aria-label="Trace row policy"><option value="all">每条语句</option><option value="changes">仅变量变化</option><option value="modules">模块进入/返回</option><option value="loops">每次循环</option><option value="branches">IF/CASE 分支</option><option value="left-to-right">从左到右</option></select><input id="trace-columns" aria-label="Trace columns" placeholder="列顺序，如 I, Total"><label><input id="hide-repeats" type="checkbox"> 隐藏重复值</label></div><div class="pane-actions"><button id="trace-prev">上一页</button><span id="trace-page" aria-live="polite"></span><button id="trace-next">下一页</button></div><div id="trace-table"></div></div><div id="flow" class="tab-pane" hidden><select id="flow-module" aria-label="Flowchart module"></select><div id="flow-content"></div></div><div id="ast" class="tab-pane" hidden><select id="ast-mode" aria-label="AST or Tokens"><option>AST</option><option>Tokens</option></select><pre id="ast-content"></pre></div><div id="export" class="tab-pane" hidden><div class="pane-actions"><select id="target" aria-label="转换语言 / Target language"><option value="python">Python 3</option><option value="java">Java 17+</option><option value="vb">VB.NET</option></select><button id="convert">转换</button><button id="export-download" disabled>↓ 下载</button><span>完整类型与虚拟文件语义 · 独立程序，仅依赖目标语言标准库。</span></div><pre id="export-content"></pre></div><div id="reference" class="tab-pane" hidden></div><div id="practice" class="tab-pane" hidden></div></section></main><footer><span><i></i> 不上传源码 · 在浏览器 Worker 中执行</span><span id="runtime-info">指令上限 100,000 · 确定性随机种子</span></footer></div><dialog id="file-dialog" aria-labelledby="file-title"><form method="dialog"><h2 id="file-title">文件</h2><p id="file-record-note" hidden>此文件包含随机记录；修改文本会保留所有记录。 / Random records will be preserved.</p><textarea aria-labelledby="file-title" id="file-text" spellcheck="false"></textarea><div class="dialog-actions"><button value="cancel">取消</button><button id="file-save" value="save" class="primary">保存</button></div></form></dialog>`;
+  `<aside class="rail"><a class="brand" href="#" aria-label="Pseudocode Ultra">P<span>u</span></a><button id="workspace-nav" class="rail-active" title="Workspace">⌘<span>编辑器</span></button><button id="examples-nav" title="Examples">▤<span>示例</span></button><button id="help-nav" title="Language reference">?<span>参考</span></button><div class="rail-bottom">CAIE</div></aside><div class="shell"><header><div><span class="eyebrow">COMPUTER SCIENCE LAB</span><h1>Pseudocode <em>Ultra</em></h1></div><div class="header-right"><span class="local-dot"></span>本地执行 · Local-first <button id="practice-open" title="原创练习">练习</button><button id="exam-open" title="考试练习">考试</button><button id="theme" title="Switch theme">◐</button></div></header><div id="storage-warning" class="storage-warning" role="alert" hidden>本机存储不可用或保存失败，部分内容可能仅在本次会话保留。请下载备份。 / Local storage failed; download a backup.</div><section class="toolbar"><div class="select-wrap"><label for="dialect">方言</label><select id="dialect"><option>0478</option><option>2210</option><option>9618-AS</option><option>9618-A2</option></select></div><span class="divider"></span><button id="run" class="primary">▶ 运行 <kbd>Ctrl ↵</kbd></button><select id="run-mode" aria-label="运行方式 / Run mode"><option value="manual">手动运行</option><option value="change">输入后运行</option><option value="blur">失焦时运行</option></select><label class="fast-toggle" title="高速执行不生成追踪表，调试请关闭"><input id="fast-mode" type="checkbox">高速</label><button id="pause" disabled>Ⅱ 暂停</button><button id="step">↳ 单步</button><button id="over" disabled>↷ 跳过</button><button id="out" disabled>↑ 跳出</button><button id="stop" disabled>■ 停止</button><span class="toolbar-space"></span><button id="format">格式化</button><button id="print-pdf">PDF</button><button id="download">↓ 保存</button><button id="upload">↑ 打开</button><input id="source-upload" type="file" accept=".txt,.pseudo,.psc" hidden></section><main><section class="editor-panel panel"><div class="panel-heading"><div class="file-tab"><span class="file-icon">⌁</span> <span id="source-name">${escape(sourceName)}</span><span id="save-state" class="save-state" role="status">已保存本机</span></div><select id="examples" aria-label="Load example"><option value="">示例程序 / Examples</option>${examples.map((e, i) => `<option value="${i}">${e.name}</option>`).join("")}</select></div><div id="editor"></div><div id="signature-help" hidden></div><div class="editor-footer"><span id="cursor">Ln 1, Col 1</span><span>UTF-8 <span id="indent">4 spaces</span><button id="clear-breakpoints">清除断点</button></span></div></section><aside class="inspector panel"><div class="panel-heading"><h2>调试工作台 <small>DEBUGGER</small></h2><span id="status" class="status" role="status" aria-live="polite">就绪</span></div><div class="debug-section"><h3>变量 <small>VARIABLES</small></h3><div id="variables" class="empty">运行或单步执行后查看变量</div></div><div class="debug-section"><h3>监视表达式 <small>WATCH</small></h3><form id="watch-form"><input id="watch-input" placeholder="变量名称，例如 Total" aria-label="Watch variable"><button>＋</button></form><div id="watches"></div></div><div class="debug-section"><h3>调用栈 <small>CALL STACK</small></h3><div id="stack" class="empty">尚未进入子程序</div></div><div class="debug-section"><h3>虚拟文件 <small>FILES · IndexedDB</small></h3><div id="files"></div><button id="add-file">＋ 新建文件</button><button id="import-file">↑ 导入文件</button><button id="backup-files">↓ 备份全部</button><input id="file-upload" type="file" hidden></div><div class="debug-section"><h3>代码大纲 <small>OUTLINE</small></h3><div id="outline"></div></div><div class="policy-note"><span>ℹ</span><div>Cambridge 规范版本可配置<br><small>依据官方 Guide / Insert / v6 考纲实现。具体来源与模糊语义策略见语言参考。</small></div></div></aside><section class="output-panel panel"><nav class="tabs" role="tablist" aria-label="Output panels"><button data-tab="console" class="selected">终端 <span>CONSOLE</span></button><button data-tab="diagnostics">诊断 <span id="diagnostic-count">0</span></button><button data-tab="trace">追踪表</button><button data-tab="flow">流程图</button><button data-tab="ast">AST / Tokens</button><button data-tab="export">代码转换</button><button data-tab="reference">语言参考</button><button data-tab="practice">原创练习</button></nav><div id="console" class="tab-pane"><div id="console-output"><div class="terminal-hint">Pseudocode Ultra runtime<br><span>准备好了。点击运行，或点击行号旁设置断点后开始单步执行。</span></div></div><form id="input-form" hidden><label for="runtime-input">INPUT →</label><input id="runtime-input" autocomplete="off" placeholder="输入值后按 Enter"><button class="primary">提交</button></form></div><div id="diagnostics" class="tab-pane" hidden></div><div id="trace" class="tab-pane" hidden><div class="pane-actions"><button id="csv">↓ CSV</button><button id="xlsx">↓ Excel</button><label><input id="trace-blank" type="checkbox"> 填空练习</label><button id="grade-trace">批改本页</button><span id="trace-grade"></span><select id="trace-filter" aria-label="Trace row policy"><option value="all">每条语句</option><option value="changes">仅变量变化</option><option value="modules">模块进入/返回</option><option value="loops">每次循环</option><option value="branches">IF/CASE 分支</option><option value="left-to-right">从左到右</option></select><input id="trace-columns" aria-label="Trace columns" placeholder="列顺序，如 I, Total"><label><input id="hide-repeats" type="checkbox"> 隐藏重复值</label></div><div class="pane-actions"><button id="trace-prev">上一页</button><span id="trace-page" aria-live="polite"></span><button id="trace-next">下一页</button></div><div id="trace-table"></div></div><div id="flow" class="tab-pane" hidden><select id="flow-module" aria-label="Flowchart module"></select><div id="flow-content"></div></div><div id="ast" class="tab-pane" hidden><select id="ast-mode" aria-label="AST or Tokens"><option>AST</option><option>Tokens</option></select><pre id="ast-content"></pre></div><div id="export" class="tab-pane" hidden><div class="pane-actions"><select id="target" aria-label="转换语言 / Target language"><option value="python">Python 3</option><option value="java">Java 17+</option><option value="vb">VB.NET</option></select><button id="convert">转换</button><button id="export-download" disabled>↓ 下载</button><span>完整类型与虚拟文件语义 · 独立程序，仅依赖目标语言标准库。</span></div><pre id="export-content"></pre></div><div id="reference" class="tab-pane" hidden></div><div id="practice" class="tab-pane" hidden></div></section></main><footer><span><i></i> 不上传源码 · 在浏览器 Worker 中执行</span><span id="runtime-info">指令上限 100,000 · 确定性随机种子</span></footer></div><dialog id="file-dialog" aria-labelledby="file-title"><form method="dialog"><h2 id="file-title">文件</h2><p id="file-record-note" hidden>此文件包含随机记录；修改文本会保留所有记录。 / Random records will be preserved.</p><textarea aria-labelledby="file-title" id="file-text" spellcheck="false"></textarea><div class="dialog-actions"><button value="cancel">取消</button><button id="file-save" value="save" class="primary">保存</button></div></form></dialog>`;
 $("editor").insertAdjacentHTML(
   "afterend",
   `<div class="analysis-controls"><progress id="analysis-progress" aria-label="语言分析进度" hidden></progress><span id="analysis-state" role="status" aria-live="polite">等待分析</span><button id="analysis-cancel" hidden>取消分析</button><button id="analysis-resume" hidden>重新分析</button></div>`,
@@ -300,6 +296,7 @@ class Breakpoint extends GutterMarker {
 }
 const marker = new Breakpoint();
 const languageConfig = new Compartment();
+const appearanceConfig = new Compartment();
 const createLanguageSupport = () =>
   StreamLanguage.define({
     token(stream) {
@@ -311,11 +308,13 @@ const createLanguageSupport = () =>
       if (stream.match(/\b\d+(\.\d+)?\b/)) return "number";
       if (stream.match(/[A-Za-z][\w]*/)) {
         const name = stream.current().toUpperCase();
-        return keywords.has(name)
-          ? "keyword"
-          : profile(language).builtins.includes(name)
-            ? "variableName.standard"
-            : null;
+        return /^(INTEGER|REAL|BOOLEAN|CHAR|STRING|DATE)$/.test(name)
+          ? "typeName"
+          : keywords.has(name)
+            ? "keyword"
+            : profile(language).builtins.includes(name)
+              ? "variableName.standard"
+              : null;
       }
       stream.next();
       return null;
@@ -450,16 +449,7 @@ const editor = new EditorView({
         },
       ]),
       languageConfig.of(createLanguageSupport()),
-      syntaxHighlighting(
-        HighlightStyle.define([
-          ...defaultHighlightStyle.specs,
-          {
-            tag: tags.invalid,
-            color: "#bf4055",
-            textDecoration: "underline wavy",
-          },
-        ]),
-      ),
+      appearanceConfig.of(editorAppearance(darkTheme)),
       foldService.of((state, from, to) => {
         const line = state.doc.lineAt(from);
         const endFor = (text: string) => {
@@ -1621,14 +1611,26 @@ $("diagnostics").onclick = (e) => {
     editor.focus();
   }
 };
+function updateThemeButton() {
+  const label = darkTheme
+    ? "切换到浅色模式 / Switch to light mode"
+    : "切换到暗色模式 / Switch to dark mode";
+  $("theme").textContent = darkTheme ? "☀" : "◐";
+  $("theme").title = label;
+  $("theme").setAttribute("aria-label", label);
+  $("theme").setAttribute("aria-pressed", String(darkTheme));
+}
 $("theme").onclick = () => {
-  document.body.classList.toggle("dark");
-  settings.setItem(
-    "theme",
-    document.body.classList.contains("dark") ? "dark" : "light",
-  );
+  darkTheme = !darkTheme;
+  document.documentElement.classList.toggle("dark", darkTheme);
+  document.body.classList.toggle("dark", darkTheme);
+  editor.dispatch({
+    effects: appearanceConfig.reconfigure(editorAppearance(darkTheme)),
+  });
+  settings.setItem("theme", darkTheme ? "dark" : "light");
+  updateThemeButton();
 };
-if (settings.getItem("theme") === "dark") document.body.classList.add("dark");
+updateThemeButton();
 $("help-nav").onclick = () => showTab("reference");
 $("examples-nav").onclick = () => $<HTMLSelectElement>("examples").focus();
 $("workspace-nav").onclick = () => editor.focus();

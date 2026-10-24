@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-24T10:44:08.846Z",
+  "browser": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "records": [
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "phase": "workspace",
+      "width": 1440,
+      "editor": {
+        "x": 14,
+        "y": 155.1875,
+        "width": 749.90625,
+        "height": 816,
+        "top": 155.1875,
+        "right": 763.90625,
+        "bottom": 971.1875,
+        "left": 14
+      },
+      "output": {
+        "x": 773.90625,
+        "y": 155.1875,
+        "width": 652.09375,
+        "height": 558,
+        "top": 155.1875,
+        "right": 1426,
+        "bottom": 713.1875,
+        "left": 773.90625
+      },
+      "background": "rgb(16, 18, 30)",
+      "errors": [],
+      "clientWidth": 1440
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "phase": "practice",
+      "score": "当前答卷：100 / 100",
+      "errors": []
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "phase": "exam",
+      "status": "考试进行中",
+      "output": "42",
+      "errors": []
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "phase": "workspace",
+      "width": 390,
+      "editor": {
+        "x": 9,
+        "y": 216.1875,
+        "width": 372,
+        "height": 440,
+        "top": 216.1875,
+        "right": 381,
+        "bottom": 656.1875,
+        "left": 9
+      },
+      "output": {
+        "x": 9,
+        "y": 666.1875,
+        "width": 372,
+        "height": 400,
+        "top": 666.1875,
+        "right": 381,
+        "bottom": 1066.1875,
+        "left": 9
+      },
+      "background": "rgb(16, 18, 30)",
+      "errors": [],
+      "clientWidth": 390
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "phase": "practice",
+      "score": "当前答卷：100 / 100",
+      "errors": []
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "phase": "exam",
+      "status": "考试进行中",
+      "output": "42",
+      "errors": []
+    }
+  ]
+}

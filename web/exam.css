@@ -1,36 +1,57 @@
 .exam-panel {
-  margin: 0 26px 12px;
-  padding: 12px 16px;
-  border: 1px solid var(--border, #d7dce2);
-  border-radius: 10px;
-  background: var(--surface, #f7f9fb);
-  color: var(--text, #172b3a);
-  font-size: 13px;
+  margin: 0 0 10px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.6;
 }
 .exam-panel [hidden] {
   display: none !important;
 }
 .exam-panel summary {
   cursor: pointer;
-  font-weight: 650;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.exam-panel #exam-details > summary {
+  padding: 8px 0;
+}
+.exam-panel #exam-details[open] > summary {
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
 }
 .exam-panel summary span {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 .exam-panel p {
-  margin: 10px 0;
-  line-height: 1.6;
+  margin: 8px 0;
+}
+.exam-panel .exam-notice {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--text);
 }
 .exam-controls {
   display: flex;
   align-items: end;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .exam-controls label {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
+  color: var(--muted);
 }
 .exam-controls input[type="number"] {
   width: 95px;
@@ -38,54 +59,164 @@
 .exam-controls .exam-copy-option {
   flex-direction: row;
   align-items: center;
-  padding: 8px 0;
+  align-self: flex-end;
+  min-height: 30px;
+  gap: 6px;
+  color: var(--text);
 }
 .exam-panel input,
 .exam-panel select,
 .exam-panel button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-alt);
+  color: var(--text);
   font: inherit;
+  line-height: 1.5;
+}
+.exam-panel input[type="checkbox"] {
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--accent);
 }
 .exam-panel button {
   cursor: pointer;
-  padding: 7px 10px;
 }
-.exam-panel button:disabled {
+.exam-panel button:hover:enabled {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.exam-panel #exam-start,
+.exam-panel #exam-submit:enabled {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.exam-panel button:disabled,
+.exam-panel input:disabled,
+.exam-panel select:disabled {
   cursor: default;
   opacity: 0.5;
 }
+.exam-panel #exam-session > .exam-controls {
+  align-items: center;
+}
+.exam-panel #exam-state {
+  color: var(--accent);
+  font-weight: 600;
+}
+.exam-panel:has(#exam-submit:disabled) #exam-state {
+  color: var(--warning);
+}
+.exam-panel #exam-rules,
+.exam-panel #exam-save-state,
+.exam-panel #exam-deadline,
+.exam-panel #exam-archive-status {
+  color: var(--muted);
+}
 .exam-panel #exam-countdown {
-  font-family: monospace;
-  font-size: 20px;
-  font-weight: 700;
+  display: inline-block;
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--code);
+  color: var(--text);
+  font:
+    600 17px/1.5 "Cascadia Code",
+    Consolas,
+    monospace;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+.exam-panel #exam-message:not(:empty) {
+  padding: 7px 10px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.exam-panel #exam-archive {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0;
+}
+.exam-panel #exam-archive-status {
+  flex: 1 1 220px;
 }
 .exam-panel #exam-insert {
   margin-top: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.exam-panel #exam-insert-content {
+  margin-top: 10px;
+}
+.exam-panel #exam-insert-content > p:first-child {
+  color: var(--muted);
+}
+.exam-panel h3 {
+  margin: 12px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
 }
 .exam-signatures {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
-  gap: 5px 20px;
+  gap: 6px;
+  margin: 10px 0;
+}
+.exam-signatures p {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-alt);
 }
 .exam-signatures code {
+  color: var(--text);
+  font:
+    12px/1.6 "Cascadia Code",
+    Consolas,
+    monospace;
   overflow-wrap: anywhere;
 }
 .exam-signatures small {
   display: block;
-  opacity: 0.8;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
 }
 .exam-panel pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--code);
+  color: var(--text);
+  font:
+    12px/1.6 "Cascadia Code",
+    Consolas,
+    monospace;
 }
 @media (max-width: 700px) {
   .exam-panel {
-    margin: 0 10px 10px;
-    padding: 10px;
+    padding: 0 10px;
   }
   .exam-controls {
     align-items: stretch;
   }
   .exam-controls label {
     max-width: 100%;
+  }
+  .exam-panel #exam-session > .exam-controls {
+    gap: 8px;
+  }
+  .exam-panel #exam-rules {
+    flex-basis: 100%;
   }
 }
