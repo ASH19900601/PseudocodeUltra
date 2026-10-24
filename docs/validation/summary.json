@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-10-24 13:35:33",
+  "timezone": "Asia/Shanghai",
+  "sourceSha256": "8b31499c126a9def27e0952999fe50eb760f4f1ff4358500c0c7ed54e84a1edf",
+  "node": "v24.19.0",
+  "checks": [
+    {
+      "name": "specifications",
+      "exitCode": 0,
+      "durationMs": 35.308255,
+      "status": "passed"
+    },
+    {
+      "name": "core",
+      "exitCode": 0,
+      "durationMs": 592.65468,
+      "status": "passed",
+      "tests": 153,
+      "passed": 153,
+      "failed": 0
+    },
+    {
+      "name": "native",
+      "exitCode": 0,
+      "durationMs": 21022.018396,
+      "status": "passed",
+      "tests": 34,
+      "passed": 34,
+      "failed": 0
+    },
+    {
+      "name": "browser",
+      "exitCode": 0,
+      "durationMs": 12610.468462,
+      "status": "passed",
+      "tests": 19,
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "build",
+      "exitCode": 0,
+      "durationMs": 3674.6089800000045,
+      "status": "passed"
+    },
+    {
+      "name": "performance",
+      "exitCode": 0,
+      "durationMs": 3101.0946790000016,
+      "status": "passed"
+    },
+    {
+      "name": "production",
+      "exitCode": 0,
+      "durationMs": 1285.6937499999985,
+      "status": "passed"
+    }
+  ],
+  "status": "passed",
+  "performance": {
+    "loops": 10000000,
+    "executionMs": 34.767726999999994,
+    "lines": 100000,
+    "coldMs": 2916.122929,
+    "incrementalMs": 9.694764000000305,
+    "node": "v24.19.0",
+    "mode": "fast execution without trace; one nonstructural edit after cold analysis"
+  },
+  "finishedAt": "2026-10-24 13:36:15"
+}

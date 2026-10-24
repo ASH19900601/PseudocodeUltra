@@ -1,0 +1,84 @@
+{
+  "sources": [
+    {
+      "id": "0478-v6",
+      "url": "https://www.cambridgeinternational.org/Images/697167-2026-2028-syllabus.pdf",
+      "filename": "0478.pdf",
+      "version": "2026–2028 v6, September 2026",
+      "sections": "pp.28,35–48",
+      "sha256": "e89c9629185d75b7e182e74460f1b0fd62e30c71f2ae4d67c9563123ca0558d1",
+      "retrieved": "2026-10-24",
+      "status": "verified-from-official-host"
+    },
+    {
+      "id": "0478-v6-update",
+      "url": "https://www.cambridgeinternational.org/Images/711263-2026-2028-syllabus-update.pdf",
+      "filename": "0478-update.pdf",
+      "version": "September 2026",
+      "sections": "pp.1–2",
+      "sha256": "dc148683046833f248ecb27934fcecc1121039d3b87f285045cba53fe3340144",
+      "retrieved": "2026-10-24",
+      "status": "verified-from-official-host"
+    },
+    {
+      "id": "2210-v6",
+      "url": "https://www.cambridgeinternational.org/Images/697287-2026-2028-syllabus.pdf",
+      "filename": "2210.pdf",
+      "version": "2026–2028 v6, September 2026",
+      "sections": "Pseudocode pp.35–48",
+      "sha256": "d142c8bc77aef1ed97cdf7074931ca63ade68a3000ecc7eec0b694dfd3940ed5",
+      "retrieved": "2026-10-24",
+      "status": "verified-from-official-host"
+    },
+    {
+      "id": "9618-guide-2026",
+      "url": "https://www.cambridgeinternational.org/Images/697401-2026-pseudocode-guide-for-teachers.pdf",
+      "filename": "guide-official.pdf",
+      "version": "2026, version 1",
+      "sections": "§1–10",
+      "sha256": "b1abd27737950f45ffcdd9b6b5ec2f9378f85cd4623f0e387983715a463b687a",
+      "retrieved": "2026-10-24",
+      "status": "verified-from-official-host"
+    },
+    {
+      "id": "9618-guide-2027",
+      "url": "https://www.cambridgeinternational.org/Images/721401-2027-2029-pseudocode-guide.pdf",
+      "filename": "guide-2027.pdf",
+      "version": "2027–2029, version 1",
+      "sections": "§1–10",
+      "sha256": "04f42cc247cc49e069543aef242dbc6d1d89d4f3539c23148683386cebb2c4b7",
+      "retrieved": "2026-10-24",
+      "status": "verified-from-official-host"
+    },
+    {
+      "id": "9618-insert",
+      "url": "https://www.cambridgeinternational.org/Images/673618-june-2024-insert-paper-21.pdf",
+      "filename": "insert.pdf",
+      "version": "June 2024 P21",
+      "sections": "pp.2–4",
+      "sha256": "7356fb3ff8b6a5ec1bc9a3170f58972bff7ad86a6110c76ef841dfc24bd4a4d2",
+      "retrieved": "2026-10-24",
+      "status": "verified-from-official-host"
+    },
+    {
+      "id": "9618-syllabus",
+      "url": "https://www.cambridgeinternational.org/Images/697372-2026-syllabus.pdf",
+      "filename": "9618-syllabus.pdf",
+      "version": "2026",
+      "sections": "§10–12,19–20",
+      "sha256": "bf1b77a2b765d10eb4b005ecae0412add35cf6113ba3218a517893abfc9f2470",
+      "retrieved": "2026-10-24",
+      "status": "verified-from-official-host"
+    },
+    {
+      "id": "2210-2029",
+      "url": "https://www.cambridgeinternational.org/Images/763448-2029-2031-syllabus.pdf",
+      "filename": "2210-2029.pdf",
+      "version": "2029–2031",
+      "sections": "Paper 2 assessment; syllabus changes",
+      "sha256": "eee9169aa17b69a05fbcc8b84ad5a251acb0ce6ddc49fe5580135559ca6dd91a",
+      "retrieved": "2026-10-24",
+      "status": "verified-from-official-host"
+    }
+  ]
+}

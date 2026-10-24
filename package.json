@@ -1,0 +1,43 @@
+{
+  "name": "pseudocode-ultra",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "test": "tsx --test conformance/*.test.ts",
+    "check": "tsc --noEmit",
+    "preview": "vite preview --host 0.0.0.0",
+    "test:native": "tsx --test conformance/native/*.test.ts",
+    "test:e2e": "playwright test",
+    "test:all": "npm test && npm run test:native && npm run test:e2e && npm run build && npm run benchmark",
+    "setup:toolchains": "bash scripts/setup-toolchains.sh",
+    "test:production": "node scripts/smoke-production.mjs",
+    "format": "prettier --write core web conformance scripts/*.ts scripts/*.mjs README.md docs/*.md",
+    "benchmark": "tsx scripts/benchmark.ts",
+    "accept": "node scripts/acceptance.mjs",
+    "specs:verify": "python scripts/fetch-specs.py"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.18.0",
+    "@codemirror/commands": "^6.8.0",
+    "@codemirror/language": "^6.11.0",
+    "@codemirror/lint": "^6.8.0",
+    "@codemirror/state": "^6.5.0",
+    "@codemirror/view": "^6.36.0",
+    "@lezer/highlight": "^1.2.1",
+    "codemirror": "^6.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.1",
+    "@types/node": "^22.15.0",
+    "prettier": "3.9.10",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

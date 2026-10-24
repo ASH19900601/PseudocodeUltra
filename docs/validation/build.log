@@ -1,0 +1,22 @@
+
+> pseudocode-ultra@0.2.0 build
+> tsc --noEmit && vite build
+
+vite v6.4.5 building for production...
+transforming...
+✓ 38 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                             0.48 kB │ gzip:   0.33 kB
+dist/assets/language.worker-D06J_Zdo.js    50.24 kB
+dist/assets/execution.worker-DrJY2zT8.js   85.83 kB
+dist/assets/index-Jp4KU3b4.css             12.82 kB │ gzip:   3.61 kB
+dist/assets/transpile-xjXB3F9K.js         102.59 kB │ gzip:  30.20 kB
+dist/assets/index-BweLHtjg.js             486.46 kB │ gzip: 162.53 kB
+✓ built in 1.73s
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
